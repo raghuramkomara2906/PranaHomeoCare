@@ -1,0 +1,223 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ==========================================================================
+   Design tokens — Yamini Homeopathy
+   A calm, premium, minimal palette: warm ivory canvas, a single sage-green
+   accent family, and a very sparing warm bronze accent — no bright greens,
+   no dark sections. Typography pairs an elegant display serif (Cormorant
+   Garamond) for headings with Inter for body/UI text, and IBM Plex Mono for
+   anything that represents precise, verified data — appointment times,
+   reference numbers — so the type itself signals "this figure is exact."
+   ========================================================================== */
+
+:root {
+  /* Canvas & surface */
+  --color-canvas: #faf9f6;
+  --color-canvas-muted: #f3f6f1;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #eef2ec;
+
+  /* Ink (text) */
+  --color-ink: #2f3a35;
+  --color-ink-soft: #5b665f;
+  --color-ink-faint: #8a9690;
+  --color-ink-on-dark: #f3f1e7;
+  --color-ink-on-dark-soft: #c3cabd;
+
+  /* Sage — primary accent */
+  --color-sage: #5e8b6f;
+  --color-sage-dark: #4f735e;
+  --color-sage-light: #e7efe9;
+
+  /* Teal — secondary / deep accent (status semantics only — not part of the
+     homepage's visual identity) */
+  --color-teal: #2c5250;
+  --color-teal-dark: #1c3a38;
+  --color-teal-light: #dbe9e7;
+
+  /* Sand — warm neutral; sand-dark is the brief's "very minimal" bronze accent */
+  --color-sand: #e4d9be;
+  --color-sand-dark: #b08d57;
+  --color-sand-light: #f4efe0;
+
+  /* Sky — light accent */
+  --color-sky: #a9c2c6;
+  --color-sky-dark: #5f8a90;
+  --color-sky-light: #e7eff0;
+
+  /* Clay — muted caution / cancelled / error (never bright red) */
+  --color-clay: #ad6249;
+  --color-clay-dark: #8a4a35;
+  --color-clay-light: #f3e2da;
+
+  /* Gold — muted pending / awaiting state */
+  --color-gold: #a9822f;
+  --color-gold-light: #f2e9d3;
+
+  /* Structure */
+  --color-border: #e4e9e1;
+  --color-border-strong: #d2dbcd;
+  --color-focus-ring: #4f735e;
+
+  /* Shadows — soft, diffuse, warm-toned (never pure black) */
+  --shadow-soft: 0 1px 2px rgba(47, 58, 53, 0.04), 0 12px 32px -16px rgba(47, 58, 53, 0.16);
+  --shadow-lifted: 0 4px 8px rgba(47, 58, 53, 0.04), 0 24px 48px -20px rgba(47, 58, 53, 0.22);
+  --shadow-inset-line: inset 0 0 0 1px var(--color-border);
+
+  /* Radii */
+  --radius-sm: 0.625rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 2rem;
+}
+
+@theme inline {
+  --color-canvas: var(--color-canvas);
+  --color-canvas-muted: var(--color-canvas-muted);
+  --color-surface: var(--color-surface);
+  --color-surface-sunken: var(--color-surface-sunken);
+
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-ink-faint: var(--color-ink-faint);
+  --color-ink-on-dark: var(--color-ink-on-dark);
+  --color-ink-on-dark-soft: var(--color-ink-on-dark-soft);
+
+  --color-sage: var(--color-sage);
+  --color-sage-dark: var(--color-sage-dark);
+  --color-sage-light: var(--color-sage-light);
+
+  --color-teal: var(--color-teal);
+  --color-teal-dark: var(--color-teal-dark);
+  --color-teal-light: var(--color-teal-light);
+
+  --color-sand: var(--color-sand);
+  --color-sand-dark: var(--color-sand-dark);
+  --color-sand-light: var(--color-sand-light);
+
+  --color-sky: var(--color-sky);
+  --color-sky-dark: var(--color-sky-dark);
+  --color-sky-light: var(--color-sky-light);
+
+  --color-clay: var(--color-clay);
+  --color-clay-dark: var(--color-clay-dark);
+  --color-clay-light: var(--color-clay-light);
+
+  --color-gold: var(--color-gold);
+  --color-gold-light: var(--color-gold-light);
+
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-focus-ring: var(--color-focus-ring);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-lifted: var(--shadow-lifted);
+
+  --font-display: var(--font-cormorant);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --animate-fade-up: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-marquee: marquee 32s linear infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+/* ==========================================================================
+   Base layer
+   ========================================================================== */
+
+* {
+  border-color: var(--color-border);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-sage-light);
+  color: var(--color-sage-dark);
+}
+
+/* Visible, consistent keyboard focus everywhere — never suppressed */
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* A shared eyebrow / label treatment used across the design system —
+   set in the mono face so anything wearing it reads as precise metadata
+   (category tags, status labels, step counters) rather than decoration. */
+.text-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
