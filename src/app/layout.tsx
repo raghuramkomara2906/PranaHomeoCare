@@ -3,9 +3,7 @@ import { Cormorant_Garamond, Inter, IBM_Plex_Mono } from "next/font/google";
 
 import { siteConfig } from "@/config/site";
 import { Providers } from "@/app/providers";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
-import { AssistantWidget } from "@/components/assistant/assistant-widget";
+import { SiteFrame } from "@/components/layout/site-frame";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -68,12 +66,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <Providers>
-          <Header />
-          <main id="main-content" className="flex-1 pt-20">
-            {children}
-          </main>
-          <Footer />
-          <AssistantWidget />
+          <SiteFrame>{children}</SiteFrame>
         </Providers>
       </body>
     </html>

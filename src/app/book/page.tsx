@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { getServices } from "@/services/services.service";
-import { BookingFlow } from "@/components/book/booking-flow";
+import { BookingFlow } from "@/components/booking/booking-flow";
+import type { ConsultationType } from "@/lib/types/api";
 
 export const metadata: Metadata = {
   title: "Book a Consultation",
@@ -10,13 +10,11 @@ export const metadata: Metadata = {
 export default async function BookPage({
   searchParams,
 }: {
-  searchParams: Promise<{ service?: string }>;
+  searchParams: Promise<{ type?: string }>;
 }) {
-  const { service: serviceSlug } = await searchParams;
-  const services = await getServices();
+  const { type } = await searchParams;
+  const initialType: ConsultationType | null =
+    type === "teleconsultation" || type === "video_consultation" ? type : null;
 
-  const initialService =
-    services.find((service) => service.slug === serviceSlug) ?? null;
-
-  return <BookingFlow services={services} initialService={initialService} />;
+  return <BookingFlow initialType={initialType} />;
 }

@@ -1,8 +1,8 @@
-import { getPractitioner } from "@/services/practitioner.service";
-import { getServices } from "@/services/services.service";
-import { getFeaturedArticles } from "@/services/articles.service";
-import { getTestimonials } from "@/services/testimonials.service";
-import { getHomepageFaqs } from "@/services/faq.service";
+import { mockPractitioner } from "@/data/practitioner";
+import { mockServices } from "@/data/services";
+import { featuredArticles } from "@/data/articles";
+import { mockTestimonials } from "@/data/testimonials";
+import { homepageFaqs } from "@/data/faqs";
 
 import { Hero } from "@/components/home/hero";
 import { PatientReality } from "@/components/home/patient-reality";
@@ -18,30 +18,24 @@ import { Testimonials } from "@/components/home/testimonials";
 import { FaqPreview } from "@/components/home/faq-preview";
 import { FinalCta } from "@/components/home/final-cta";
 
-export default async function HomePage() {
-  const [practitioner, services, articles, testimonials, faqs] =
-    await Promise.all([
-      getPractitioner(),
-      getServices(),
-      getFeaturedArticles(),
-      getTestimonials(),
-      getHomepageFaqs(),
-    ]);
-
+// Version 1 marketing content is static (mock data in src/data). There is no
+// public content API, so the homepage reads the data directly rather than
+// through a service that would call a non-existent endpoint.
+export default function HomePage() {
   return (
     <>
       <Hero />
       <ExperienceHighlights />
       <ConditionsConsulted />
-      <AboutPreview practitioner={practitioner} />
+      <AboutPreview practitioner={mockPractitioner} />
       <StatsBand />
       <PatientReality />
-      <ServicesPreview services={services} />
+      <ServicesPreview services={mockServices} />
       <PatientJourney />
       <HowItWorksPreview />
-      <Testimonials testimonials={testimonials} />
-      <EducationPreview articles={articles} />
-      <FaqPreview faqs={faqs} />
+      <Testimonials testimonials={mockTestimonials} />
+      <EducationPreview articles={featuredArticles} />
+      <FaqPreview faqs={homepageFaqs} />
       <FinalCta />
     </>
   );

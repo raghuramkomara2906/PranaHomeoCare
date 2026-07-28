@@ -1,19 +1,24 @@
-from pydantic import EmailStr, Field
+from pydantic import EmailStr
 
 from app.schemas.base import CamelModel
-from app.schemas.user import UserOut
 
 
-class LoginRequest(CamelModel):
+class AdminLoginRequest(CamelModel):
     email: EmailStr
     password: str
 
 
-class LoginResponse(CamelModel):
-    user: UserOut
+class DoctorProfileOut(CamelModel):
+    id: str
+    display_name: str
+    qualification: str
 
 
-class RegisterRequest(CamelModel):
-    full_name: str = Field(min_length=2, max_length=255)
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=72)
+class AdminMeOut(CamelModel):
+    """The authenticated doctor/admin, as returned by POST /admin/auth/login
+    and GET /admin/auth/me. No password material ever appears here."""
+
+    id: str
+    email: str
+    role: str
+    doctor: DoctorProfileOut | None = None

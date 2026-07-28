@@ -15,7 +15,7 @@ from app.models.notification import NotificationType
 from app.models.service import Service
 from app.models.user import User, UserRole
 from app.schemas.analytics import AnalyticsSummaryOut, MonthlyCountItem, StatusBreakdownItem
-from app.schemas.appointment import AdminAppointmentOut, AppointmentUpdateRequest
+from backend.app.schemas.appointments import AdminAppointmentOut, AppointmentUpdateRequest
 from app.schemas.availability import ExceptionIn, ExceptionOut, WeeklyRuleIn, WeeklyRuleOut
 from app.schemas.contact import ContactMessageOut
 from app.schemas.patient import PatientSummaryOut

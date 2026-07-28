@@ -56,13 +56,13 @@ export function Header() {
             );
           })}
           <Link
-            href="/login"
+            href="/admin/login"
             className={cn(
               "rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-sage-light hover:text-sage-dark",
-              pathname === "/login" && "bg-sage-light text-sage-dark"
+              pathname === "/admin/login" && "bg-sage-light text-sage-dark"
             )}
           >
-            Login
+            Practitioner
           </Link>
         </nav>
 

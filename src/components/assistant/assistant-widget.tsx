@@ -1,155 +1,115 @@
 "use client";
 
 import * as React from "react";
-import { MessageCircle, X, SendHorizontal, RotateCcw } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, RotateCcw, SendHorizontal, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { mockFaqs } from "@/data/faqs";
-import { searchFaqsSync } from "@/services/faq.service";
-import {
-  detectAssistantIntent,
-  EMERGENCY_RESPONSE,
-  MEDICAL_REDIRECT_RESPONSE,
-  NO_RESULTS_RESPONSE,
-  OPENING_MESSAGE,
-} from "@/lib/assistant/detection";
-import { ASSISTANT_MENU_OPTIONS } from "@/lib/assistant/menu-options";
-import type { AssistantTurn } from "@/lib/assistant/types";
+import { ApiError } from "@/lib/api-client";
+import { useChatIntro, useSendChatMessage } from "@/hooks/use-chatbot";
+import type { ChatAction, QuickReply } from "@/lib/types/api";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { AssistantMessage } from "@/components/assistant/assistant-message";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-let turnCounter = 0;
-function nextId() {
-  turnCounter += 1;
-  return `turn_${turnCounter}_${Date.now()}`;
-}
+type Turn =
+  | { id: string; role: "user"; text: string }
+  | {
+      id: string;
+      role: "bot";
+      text: string;
+      safety?: boolean;
+      quickReplies?: QuickReply[];
+      actions?: ChatAction[];
+    };
 
-const OPENING_TURN: AssistantTurn = {
-  id: "opening",
-  from: "assistant",
-  kind: "menu",
-  text: OPENING_MESSAGE,
-};
+let counter = 0;
+const nextId = () => `t${(counter += 1)}`;
 
 export function AssistantWidget() {
   const [open, setOpen] = React.useState(false);
-  const [turns, setTurns] = React.useState<AssistantTurn[]>([OPENING_TURN]);
-  const [inputValue, setInputValue] = React.useState("");
+  const [turns, setTurns] = React.useState<Turn[]>([]);
+  const [input, setInput] = React.useState("");
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
+  const intro = useChatIntro(open);
+  const send = useSendChatMessage();
+
+  const introTurn = React.useCallback((): Turn[] => {
+    if (!intro.data) return [];
+    return [
+      {
+        id: "intro",
+        role: "bot",
+        text: intro.data.greeting,
+        quickReplies: intro.data.quickReplies,
+      },
+    ];
+  }, [intro.data]);
+
+  // Seed the opening message once the intro loads.
   React.useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [turns]);
-
-  function pushTurn(turn: AssistantTurn) {
-    setTurns((prev) => [...prev, turn]);
-  }
-
-  function handleOptionClick(optionId: string) {
-    const option = ASSISTANT_MENU_OPTIONS.find((o) => o.id === optionId);
-    if (!option) return;
-
-    pushTurn({ id: nextId(), from: "user", text: option.label });
-
-    if (option.action.type === "show-pricing") {
-      pushTurn({
-        id: nextId(),
-        from: "assistant",
-        kind: "pricing",
-        text: option.responseText,
-      });
-      return;
+    if (open && intro.data && turns.length === 0) {
+      setTurns(introTurn());
     }
-    if (option.action.type === "show-contact") {
-      pushTurn({
-        id: nextId(),
-        from: "assistant",
-        kind: "contact",
-        text: option.responseText,
-      });
-      return;
-    }
-    if (option.action.type === "require-login") {
-      pushTurn({
-        id: nextId(),
-        from: "assistant",
-        kind: "cta",
-        text: option.responseText,
-        href: "/login",
-        ctaLabel: "Log In to Continue",
-      });
-      return;
-    }
-    // type === "navigate"
-    pushTurn({
-      id: nextId(),
-      from: "assistant",
-      kind: "cta",
-      text: option.responseText,
-      href: option.action.href,
-      ctaLabel: "Take Me There",
+  }, [open, intro.data, turns.length, introTurn]);
+
+  React.useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [turns, send.isPending]);
+
+  function ask(
+    payload: { message?: string; choiceId?: string },
+    userLabel: string
+  ) {
+    setTurns((prev) => [...prev, { id: nextId(), role: "user", text: userLabel }]);
+    send.mutate(payload, {
+      onSuccess: (r) =>
+        setTurns((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: "bot",
+            text: r.reply,
+            safety: r.safety,
+            quickReplies: r.quickReplies,
+            actions: r.actions,
+          },
+        ]),
+      onError: (e) =>
+        setTurns((prev) => [
+          ...prev,
+          {
+            id: nextId(),
+            role: "bot",
+            text:
+              e instanceof ApiError
+                ? e.message
+                : "Something went wrong. Please try again.",
+          },
+        ]),
     });
   }
 
-  function handleSubmit(event: React.FormEvent) {
+  function submit(event: React.FormEvent) {
     event.preventDefault();
-    const text = inputValue.trim();
-    if (!text) return;
-
-    pushTurn({ id: nextId(), from: "user", text });
-    setInputValue("");
-
-    const intent = detectAssistantIntent(text);
-
-    if (intent === "emergency") {
-      pushTurn({
-        id: nextId(),
-        from: "assistant",
-        kind: "text",
-        text: EMERGENCY_RESPONSE,
-      });
-      return;
-    }
-
-    if (intent === "medical") {
-      pushTurn({
-        id: nextId(),
-        from: "assistant",
-        kind: "cta",
-        text: MEDICAL_REDIRECT_RESPONSE,
-        href: "/book",
-        ctaLabel: "Book a Consultation",
-      });
-      return;
-    }
-
-    const results = searchFaqsSync(text, mockFaqs).slice(0, 3);
-    if (results.length > 0) {
-      pushTurn({
-        id: nextId(),
-        from: "assistant",
-        kind: "faq-results",
-        text: "Here's what I found in the approved FAQ content:",
-        results,
-      });
-    } else {
-      pushTurn({
-        id: nextId(),
-        from: "assistant",
-        kind: "cta",
-        text: NO_RESULTS_RESPONSE,
-        href: "/faq",
-        ctaLabel: "Browse All FAQs",
-      });
-    }
+    const text = input.trim();
+    if (!text || send.isPending) return;
+    setInput("");
+    ask({ message: text }, text);
   }
 
-  function handleReset() {
-    setTurns([OPENING_TURN]);
-    setInputValue("");
+  function reset() {
+    setTurns(introTurn());
+    setInput("");
   }
+
+  const last = turns[turns.length - 1];
+  const quickReplies =
+    last && last.role === "bot" && !send.isPending ? last.quickReplies ?? [] : [];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -176,14 +136,14 @@ export function AssistantWidget() {
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <p className="font-display text-base text-ink">Website Assistant</p>
+            <p className="font-display text-base text-ink">Assistant</p>
             <p className="text-xs text-ink-faint">
-              General questions only — not a diagnostic tool
+              Consultation guidance — not a diagnostic tool
             </p>
           </div>
           <button
             type="button"
-            onClick={handleReset}
+            onClick={reset}
             className="flex items-center gap-1 rounded-full px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-surface-sunken hover:text-ink"
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
@@ -196,43 +156,92 @@ export function AssistantWidget() {
           role="log"
           aria-live="polite"
           aria-label="Assistant conversation"
-          className="flex-1 space-y-4 overflow-y-auto px-4 py-4"
+          className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
         >
-          {turns.map((turn) => (
-            <AssistantMessage key={turn.id} turn={turn} />
-          ))}
+          {intro.isLoading && turns.length === 0 && (
+            <p className="text-sm text-ink-faint">Starting up…</p>
+          )}
+
+          {turns.map((turn) =>
+            turn.role === "user" ? (
+              <div
+                key={turn.id}
+                className="max-w-[80%] self-end rounded-2xl rounded-br-sm bg-sage px-3.5 py-2 text-sm text-ink-on-dark"
+              >
+                {turn.text}
+              </div>
+            ) : (
+              <div key={turn.id} className="max-w-[85%] space-y-2 self-start">
+                <div
+                  className={cn(
+                    "rounded-2xl rounded-bl-sm px-3.5 py-2 text-sm",
+                    turn.safety
+                      ? "bg-clay-light text-clay-dark"
+                      : "bg-surface-sunken text-ink"
+                  )}
+                >
+                  {turn.text}
+                </div>
+                {turn.actions?.map((action) => (
+                  <Button
+                    key={action.path}
+                    asChild
+                    size="sm"
+                    variant="secondary"
+                    className="w-full"
+                  >
+                    <Link href={action.path} onClick={() => setOpen(false)}>
+                      {action.label}
+                    </Link>
+                  </Button>
+                ))}
+              </div>
+            )
+          )}
+
+          {send.isPending && (
+            <div className="max-w-[85%] self-start rounded-2xl rounded-bl-sm bg-surface-sunken px-3.5 py-2 text-sm text-ink-faint">
+              …
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-1.5 border-t border-border px-3 py-2.5">
-          {ASSISTANT_MENU_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => handleOptionClick(option.id)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2.5 py-1 text-[0.7rem] font-medium text-ink-soft transition-colors hover:border-sage hover:bg-sage-light hover:text-sage-dark"
-            >
-              <option.icon className="size-3" aria-hidden="true" />
-              {option.label}
-            </button>
-          ))}
-        </div>
+        {quickReplies.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 border-t border-border px-3 py-2.5">
+            {quickReplies.map((q) => (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => ask({ choiceId: q.id }, q.label)}
+                className="inline-flex items-center rounded-full border border-border-strong bg-surface px-2.5 py-1 text-[0.7rem] font-medium text-ink-soft transition-colors hover:border-sage hover:bg-sage-light hover:text-sage-dark"
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={submit}
           className="flex items-center gap-2 border-t border-border p-3"
         >
           <label htmlFor="assistant-input" className="sr-only">
-            Ask a general question
+            Ask a question
           </label>
           <input
             id="assistant-input"
             type="text"
-            value={inputValue}
-            onChange={(event) => setInputValue(event.target.value)}
-            placeholder="Ask a general question…"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="Ask a question…"
             className="h-10 flex-1 rounded-full border border-border-strong bg-canvas px-4 text-sm text-ink placeholder:text-ink-faint focus-visible:border-sage"
           />
-          <Button type="submit" size="icon" aria-label="Send message">
+          <Button
+            type="submit"
+            size="icon"
+            aria-label="Send message"
+            disabled={send.isPending}
+          >
             <SendHorizontal className="size-4" aria-hidden="true" />
           </Button>
         </form>

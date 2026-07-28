@@ -1,90 +1,119 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.core.deps import get_current_user
+from app.core.audit import record_audit, safe_inet
+from app.core.deps import get_current_admin
 from app.core.security import (
-    SESSION_COOKIE_NAME,
-    create_access_token,
-    hash_password,
+    ADMIN_SESSION_COOKIE,
+    create_admin_token,
     verify_password,
 )
 from app.database import get_db
-from app.models.user import User, UserRole
-from app.schemas.auth import LoginRequest, LoginResponse, RegisterRequest
-from app.schemas.user import UserOut, UserUpdateRequest
+from app.models import AdminUser, DoctorProfile
+from app.schemas.auth import AdminLoginRequest, AdminMeOut, DoctorProfileOut
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/admin/auth", tags=["admin-auth"])
+
+# Simple lockout: after this many consecutive failures, lock for the window.
+MAX_FAILED_LOGINS = 5
+LOCKOUT_MINUTES = 15
 
 
-def _start_session(response: Response, user: User) -> LoginResponse:
-    token = create_access_token(user.id, user.role)
+def _set_session_cookie(response: Response, token: str) -> None:
     response.set_cookie(
-        key=SESSION_COOKIE_NAME,
+        key=ADMIN_SESSION_COOKIE,
         value=token,
         httponly=True,
-        samesite="lax",
         secure=settings.cookie_secure,
+        samesite="lax",
         max_age=settings.jwt_expire_minutes * 60,
         path="/",
     )
-    return LoginResponse(user=UserOut.model_validate(user))
 
 
-@router.post("/register", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, response: Response, db: Session = Depends(get_db)):
-    existing = db.query(User).filter(User.email == payload.email).first()
-    if existing is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with that email already exists.",
-        )
-
-    user = User(
-        email=payload.email,
-        password_hash=hash_password(payload.password),
-        full_name=payload.full_name,
-        role=UserRole.PATIENT,
+def _me(admin: AdminUser, db: Session) -> AdminMeOut:
+    profile = (
+        db.query(DoctorProfile).filter(DoctorProfile.admin_user_id == admin.id).first()
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    doctor = (
+        DoctorProfileOut(
+            id=str(profile.id),
+            display_name=profile.display_name,
+            qualification=profile.qualification,
+        )
+        if profile
+        else None
+    )
+    return AdminMeOut(id=str(admin.id), email=admin.email, role=admin.role, doctor=doctor)
 
-    return _start_session(response, user)
 
+@router.post("/login", response_model=AdminMeOut)
+def login(
+    body: AdminLoginRequest,
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> AdminMeOut:
+    now = datetime.now(timezone.utc)
+    invalid = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password."
+    )
+    ip = safe_inet(request.client.host if request.client else None)
+    ua = request.headers.get("user-agent")
 
-@router.post("/login", response_model=LoginResponse)
-def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email).first()
-    if user is None or not verify_password(payload.password, user.password_hash):
+    admin = db.query(AdminUser).filter(AdminUser.email == body.email).first()
+
+    # Unknown / deactivated account — audit and fail with a generic message.
+    if admin is None or not admin.is_active:
+        record_audit(db, action="admin_login_failed", ip_address=ip, user_agent=ua,
+                     metadata={"email": body.email, "reason": "unknown_or_inactive"})
+        db.commit()
+        raise invalid
+
+    # Locked out?
+    if admin.locked_until and admin.locked_until > now:
+        record_audit(db, action="admin_login_failed", actor_admin_id=admin.id,
+                     ip_address=ip, user_agent=ua, metadata={"reason": "locked"})
+        db.commit()
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password."
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Account temporarily locked due to repeated failed logins. Try again later.",
         )
 
-    return _start_session(response, user)
+    # Wrong password — count the failure, lock if over threshold.
+    if not verify_password(body.password, admin.password_hash):
+        admin.failed_login_attempts += 1
+        if admin.failed_login_attempts >= MAX_FAILED_LOGINS:
+            admin.locked_until = now + timedelta(minutes=LOCKOUT_MINUTES)
+            admin.failed_login_attempts = 0
+        record_audit(db, action="admin_login_failed", actor_admin_id=admin.id,
+                     ip_address=ip, user_agent=ua, metadata={"reason": "bad_password"})
+        db.commit()
+        raise invalid
+
+    # Success — reset counters, stamp last login, issue the session cookie.
+    admin.failed_login_attempts = 0
+    admin.locked_until = None
+    admin.last_login_at = now
+    record_audit(db, action="admin_login_success", actor_admin_id=admin.id,
+                 ip_address=ip, user_agent=ua)
+    db.commit()
+
+    _set_session_cookie(response, create_admin_token(admin.id, admin.role))
+    return _me(admin, db)
 
 
 @router.post("/logout")
-def logout(response: Response):
-    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
-    return {"ok": True}
+def logout(response: Response, admin: AdminUser = Depends(get_current_admin)) -> dict:
+    response.delete_cookie(ADMIN_SESSION_COOKIE, path="/")
+    return {"status": "logged_out"}
 
 
-@router.get("/me", response_model=UserOut)
-def me(current_user: User = Depends(get_current_user)):
-    return current_user
-
-
-@router.patch("/me", response_model=UserOut)
-def update_me(
-    payload: UserUpdateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    if payload.full_name is not None:
-        current_user.full_name = payload.full_name
-    if payload.phone is not None:
-        current_user.phone = payload.phone
-    db.commit()
-    db.refresh(current_user)
-    return current_user
+@router.get("/me", response_model=AdminMeOut)
+def me(
+    admin: AdminUser = Depends(get_current_admin), db: Session = Depends(get_db)
+) -> AdminMeOut:
+    return _me(admin, db)

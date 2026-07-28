@@ -2,24 +2,72 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Runtime configuration.
+
+    Scheduling/business defaults (slot length, cutoffs, OTP policy) also live in
+    the clinic_settings table; these values are the bootstrap used to seed that
+    row and any place a request runs before settings are loaded. The table is
+    authoritative at runtime — see app.models.clinic.ClinicSettings.
+    """
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    # --- Database ---
     database_url: str = "postgresql+psycopg://komara@localhost:5432/homeopath_dev"
 
+    # --- Doctor/admin session (JWT in an httpOnly cookie) ---
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60 * 24
-
-    cors_origins: str = "http://localhost:3000,http://localhost:3001,http://localhost:3002"
+    jwt_expire_minutes: int = 60 * 8
+    admin_session_cookie: str = "admin_session"
     cookie_secure: bool = False
 
-    seed_practitioner_email: str = "practitioner@example.com"
-    seed_practitioner_password: str = "changeme123"
-    seed_practitioner_name: str = "[Practitioner Name]"
+    # --- Secret hashing (OTP + access tokens are SHA-256 with this pepper) ---
+    token_hash_pepper: str = "change-me-too"
+    # Fernet key (base64, 32 bytes) for encrypting Zoom join URLs at rest.
+    meeting_encryption_key: str = ""
+
+    # --- Locale / market (India, V1) ---
+    default_timezone: str = "Asia/Kolkata"
+    default_country_code: str = "+91"
+
+    # --- Scheduling defaults (seed clinic_settings) ---
+    slot_duration_minutes: int = 30
+    cancellation_cutoff_minutes: int = 60
+    reschedule_cutoff_minutes: int = 60
+    video_join_early_minutes: int = 5
+    video_join_grace_minutes: int = 15
+    tele_reminder_minutes: int = 180
+
+    # --- OTP policy ---
+    otp_length: int = 6
+    otp_ttl_seconds: int = 300
+    otp_max_attempts: int = 5
+    otp_resend_cooldown_seconds: int = 45
+    otp_max_resends: int = 3
+    # A booking hold normally lives exactly as long as the OTP.
+    booking_hold_ttl_seconds: int = 300
+
+    # --- SMS provider (worker reads these; empty => dev "log only" mode) ---
+    sms_provider: str = "console"
+    sms_api_key: str = ""
+    sms_sender_id: str = ""
+
+    # --- CORS ---
+    cors_origins: str = "http://localhost:3000,http://localhost:3001"
+
+    # --- Bootstrap seed (clinic_settings + first admin/doctor) ---
+    seed_admin_email: str = "doctor@example.com"
+    seed_admin_password: str = "changeme123"
+    seed_clinic_name: str = "[Clinic Name]"
+    seed_clinic_phone_e164: str = "+910000000000"
+    seed_doctor_display_name: str = "[Practitioner Name]"
+    seed_doctor_qualification: str = "[Qualification]"
+    seed_terms_version: str = "v1"
 
     @property
     def cors_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 settings = Settings()

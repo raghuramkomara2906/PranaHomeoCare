@@ -1,43 +1,63 @@
+import os
+
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.core.security import hash_password
 from app.database import Base, get_db
 from app.main import app
-from app.models.availability import WeeklyAvailabilityRule
-from app.models.service import Service
-from app.models.user import User, UserRole
+from app.models import AdminUser, ClinicSettings, DoctorProfile
 
-TEST_DATABASE_URL = "postgresql+psycopg://komara@localhost:5432/homeopath_test"
+
+os.environ.setdefault("SMS_PROVIDER", "memory")
+
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+psycopg://postgres:postgres@localhost:5432/homeopath_test",
+)
 
 engine = create_engine(TEST_DATABASE_URL, connect_args={"options": "-c timezone=UTC"})
-TestSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+TestSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _create_schema():
+    with engine.begin() as conn:
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext"))
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS btree_gist"))
     Base.metadata.create_all(engine)
     yield
     Base.metadata.drop_all(engine)
 
 
+@pytest.fixture(autouse=True)
+def _clean_tables():
+    # The app commits real transactions, so isolate tests by truncating after each.
+    yield
+    tables = ", ".join(t.name for t in reversed(Base.metadata.sorted_tables))
+    with engine.begin() as conn:
+        conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+
+
 @pytest.fixture
 def db_session():
-    connection = engine.connect()
-    transaction = connection.begin()
-    session = TestSessionLocal(bind=connection)
-    yield session
-    session.close()
-    transaction.rollback()
-    connection.close()
+    session = TestSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 @pytest.fixture
-def client(db_session):
+def client():
     def override_get_db():
-        yield db_session
+        db = TestSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
 
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
@@ -45,58 +65,27 @@ def client(db_session):
 
 
 @pytest.fixture
-def practitioner(db_session):
-    user = User(
-        email="practitioner@example.com",
-        password_hash=hash_password("changeme123"),
-        full_name="Test Practitioner",
-        role=UserRole.PRACTITIONER,
-    )
-    db_session.add(user)
-    db_session.flush()
-
-    for weekday in range(7):
-        db_session.add(
-            WeeklyAvailabilityRule(
-                practitioner_id=user.id,
-                weekday=weekday,
-                start_minute=9 * 60,
-                end_minute=17 * 60,
-                is_active=weekday != 0,
-            )
+def seeded_admin(db_session):
+    """clinic_settings + the doctor's admin login (password 'changeme123') +
+    the matching doctor profile."""
+    db_session.add(
+        ClinicSettings(
+            clinic_name="[Clinic Name]",
+            clinic_phone_e164="+919876543210",
+            current_terms_version="v1",
         )
-    db_session.commit()
-    return user
-
-
-@pytest.fixture
-def patient(db_session):
-    user = User(
-        email="patient@example.com",
-        password_hash=hash_password("patientpass123"),
-        full_name="Test Patient",
-        role=UserRole.PATIENT,
     )
-    db_session.add(user)
-    db_session.commit()
-    return user
-
-
-@pytest.fixture
-def service(db_session):
-    svc = Service(
-        id="svc_initial",
-        slug="initial-consultation",
-        name="Initial Online Consultation",
-        short_description="Short description.",
-        description="Long description.",
-        duration_minutes=60,
-        price=120,
-        currency="USD",
-        is_price_estimate=True,
-        appropriate_for=["First-time patients"],
-        included=["A 60-minute video consultation"],
+    admin = AdminUser(
+        email="doctor@example.com", password_hash=hash_password("changeme123")
     )
-    db_session.add(svc)
+    db_session.add(admin)
+    db_session.flush()
+    db_session.add(
+        DoctorProfile(
+            admin_user_id=admin.id,
+            display_name="[Practitioner Name]",
+            qualification="[Qualification]",
+        )
+    )
     db_session.commit()
-    return svc
+    return admin
