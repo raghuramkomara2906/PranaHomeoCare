@@ -7,7 +7,7 @@ services:
     plan: starter
     region: singapore
     healthCheckPath: /api/v1/health
-    preDeployCommand: "alembic upgrade head && python -m app.seed"
+    preDeployCommand: "sh deploy.sh"
     envVars:
       - key: DATABASE_URL
         sync: false
