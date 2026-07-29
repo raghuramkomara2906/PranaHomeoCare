@@ -1,6 +1,5 @@
 import * as React from "react";
 import Link from "next/link";
-import { Camera, Clock, HeartHandshake, Video } from "lucide-react";
 
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -61,12 +60,13 @@ export function Hero() {
                 className="absolute -right-6 top-[6%] h-[85%] w-auto text-sage/20"
                 aria-hidden="true"
               />
-              <div className="absolute inset-[12%] flex flex-col items-center justify-center gap-2 rounded-[36%] border border-dashed border-sage/40 text-center">
-                <Camera className="size-7 text-sage-dark" aria-hidden="true" />
-                <p className="max-w-[10rem] text-xs font-medium leading-relaxed text-sage-dark">
-                  Dr. Yamini Veduruparthi — photograph placeholder
-                </p>
-              </div>
+              <div className="absolute inset-[12%] overflow-hidden rounded-[36%]">
+  <img
+    src="/dr-yamini.jpg"
+    alt="Dr. Yamini Veduruparthi"
+    className="h-full w-full object-cover object-top"
+  />
+</div>
             </div>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row lg:absolute lg:right-0 lg:top-6 lg:mt-0 lg:max-w-[13rem] lg:flex-col lg:items-end">

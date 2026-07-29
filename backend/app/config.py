@@ -67,10 +67,10 @@ class Settings(BaseSettings):
     # --- Bootstrap seed ---
     seed_admin_email: str = "doctor@example.com"
     seed_admin_password: str = "changeme123"
-    seed_clinic_name: str = "[Clinic Name]"
-    seed_clinic_phone_e164: str = "+910000000000"
-    seed_doctor_display_name: str = "[Practitioner Name]"
-    seed_doctor_qualification: str = "[Qualification]"
+    seed_clinic_name: str = "Prana Homeo Care"
+    seed_clinic_phone_e164: str = "+91 7981946152"
+    seed_doctor_display_name: str = "Yamini Vedurparthi"
+    seed_doctor_qualification: str = "BHMS (Bachelor of Homeopathic Medicine & Surgery)"
     seed_terms_version: str = "v1"
 
     @field_validator("database_url")
