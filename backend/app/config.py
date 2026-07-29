@@ -1,4 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+
+
 
 
 class Settings(BaseSettings):
@@ -20,6 +23,10 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 8
     admin_session_cookie: str = "admin_session"
+    patient_session_cookie: str = "patient_session"
+    account_lockout_threshold: int = 5
+    account_lockout_minutes: int = 15
+    password_min_length: int = 8
     cookie_secure: bool = False
 
     # --- Secret hashing (OTP + access tokens are SHA-256 with this pepper) ---
@@ -33,8 +40,8 @@ class Settings(BaseSettings):
 
     # --- Scheduling defaults (seed clinic_settings) ---
     slot_duration_minutes: int = 30
-    cancellation_cutoff_minutes: int = 60
-    reschedule_cutoff_minutes: int = 60
+    cancellation_cutoff_minutes: int = 1440  # 24h
+    reschedule_cutoff_minutes: int = 180     # 3h
     video_join_early_minutes: int = 5
     video_join_grace_minutes: int = 15
     tele_reminder_minutes: int = 180
@@ -52,6 +59,11 @@ class Settings(BaseSettings):
     sms_provider: str = "console"
     sms_api_key: str = ""
     sms_sender_id: str = ""
+    fast2sms_route: str = "q"
+    # 2Factor — send-your-own-OTP (OTP_PROVIDER=twofactor)
+    otp_provider: str = ""           # if empty, falls back to sms_provider
+    twofactor_api_key: str = ""
+    twofactor_otp_template: str = "" # leave empty on trial/non-DLT plan
 
     # --- CORS ---
     cors_origins: str = "http://localhost:3000,http://localhost:3001"
@@ -64,10 +76,20 @@ class Settings(BaseSettings):
     seed_doctor_display_name: str = "[Practitioner Name]"
     seed_doctor_qualification: str = "[Qualification]"
     seed_terms_version: str = "v1"
+    
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_db_scheme(cls, v: str) -> str:
+        # Managed hosts (Render/Neon/etc.) hand out a bare postgresql:// URL;
+        # SQLAlchemy + psycopg3 needs the driver in the scheme.
+        if v.startswith("postgresql://"):
+            return "postgresql+psycopg://" + v[len("postgresql://"):]
+        return v
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+    
 
 
 settings = Settings()

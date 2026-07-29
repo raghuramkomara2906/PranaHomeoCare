@@ -3,7 +3,14 @@ export type ArticleCategory =
   | "General Wellness"
   | "Healthy Lifestyle"
   | "Family Wellness"
-  | "Frequently Asked Questions";
+  | "Frequently Asked Questions"
+  | "Holistic Wellness"
+  | "Getting Ready"
+  | "Everyday Health";
+
+export type ArticleBlock =
+  | { type: "paragraph"; text: string }
+  | { type: "list"; items: string[] };
 
 export interface Article {
   id: string;
@@ -17,4 +24,5 @@ export interface Article {
   readTimeMinutes: number;
   featured?: boolean;
   coverArtSeed: number;
+  body?: ArticleBlock[];
 }

@@ -20,6 +20,7 @@ import jwt
 from app.config import settings
 
 ADMIN_SESSION_COOKIE = settings.admin_session_cookie
+PATIENT_SESSION_COOKIE = settings.patient_session_cookie
 
 
 # --- Admin password hashing -------------------------------------------------
@@ -40,6 +41,19 @@ def create_admin_token(admin_user_id: uuid.UUID, role: str) -> str:
 
 def decode_admin_token(token: str) -> dict:
     return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+
+
+def create_patient_token(account_id: uuid.UUID) -> str:
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
+    payload = {"sub": str(account_id), "typ": "patient", "exp": expires_at}
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
+def decode_patient_token(token: str) -> dict:
+    payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    if payload.get("typ") != "patient":
+        raise jwt.InvalidTokenError("not a patient token")
+    return payload
 
 
 # --- One-shot secrets: OTPs and appointment access tokens -------------------

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routers import (
+    account,
     admin_appointments,
     admin_dashboard,
     admin_notifications,
@@ -33,6 +34,7 @@ app.include_router(slots.router, prefix=API_V1)
 app.include_router(availability.router, prefix=API_V1)
 app.include_router(booking.router, prefix=API_V1)
 app.include_router(appointments.router, prefix=API_V1)
+app.include_router(account.router, prefix=API_V1)
 app.include_router(admin_appointments.router, prefix=API_V1)
 app.include_router(admin_notifications.router, prefix=API_V1)
 app.include_router(admin_dashboard.router, prefix=API_V1)

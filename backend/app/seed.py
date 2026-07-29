@@ -22,6 +22,7 @@ def seed() -> None:
                     timezone=settings.default_timezone,
                     slot_duration_minutes=settings.slot_duration_minutes,
                     cancellation_cutoff_minutes=settings.cancellation_cutoff_minutes,
+                    reschedule_cutoff_minutes=settings.reschedule_cutoff_minutes,
                     video_join_early_minutes=settings.video_join_early_minutes,
                     tele_reminder_minutes=settings.tele_reminder_minutes,
                     current_terms_version=settings.seed_terms_version,

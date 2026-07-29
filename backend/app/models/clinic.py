@@ -24,7 +24,10 @@ class ClinicSettings(Base, TimestampMixin):
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Kolkata", nullable=False)
     slot_duration_minutes: Mapped[int] = mapped_column(SmallInteger, default=30, nullable=False)
     cancellation_cutoff_minutes: Mapped[int] = mapped_column(
-        SmallInteger, default=60, nullable=False
+        SmallInteger, default=1440, nullable=False
+    )
+    reschedule_cutoff_minutes: Mapped[int] = mapped_column(
+        SmallInteger, default=180, nullable=False
     )
     video_join_early_minutes: Mapped[int] = mapped_column(
         SmallInteger, default=5, nullable=False

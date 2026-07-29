@@ -8,20 +8,20 @@
  * usages that reference them, before this site goes live.
  */
 export const siteConfig = {
-  name: "Yamini Homeopathy",
-  shortName: "Yamini Homeopathy",
+  name: "Prana Homeo Care",
+  shortName: "Prana Homeo Care",
   // The header/footer wordmark splits across two lines — see Logo.
-  brandPrimary: "Yamini",
-  brandSecondary: "Homeopathy",
-  tagline: "Personalized Homeopathic Care for Lifelong Wellness",
+  brandPrimary: "Prana",
+  brandSecondary: "Homeo Care",
+  tagline: "Attentive care for your natural well-being",
   description:
     "Compassionate homeopathic consultations with an individualized approach for every stage of life.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://example.com",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://pranahomeocare.com",
 
   // The individual practitioner's identity — still a placeholder until
   // supplied and verified, distinct from the clinic brand above.
-  practitionerName: "[Practitioner Name]",
-  practitionerTitle: "[Professional Title]",
+  practitionerName: "Dr. Yamini Veduruparthi",
+  practitionerTitle: "Consulting Homeopathic Physician",
   contactEmail: "[hello@example.com]",
   contactPhone: "[+1 (000) 000-0000]",
 

@@ -1,30 +1,24 @@
 import type { Practitioner } from "@/lib/types";
 import { siteConfig } from "@/config/site";
 
-/**
- * MOCK DATA — replace with a real API response from
- * GET /api/v1/practitioner once the backend is connected (see
- * src/services/practitioner.service.ts). Every "placeholder" field below
- * must be verified before this content is published.
- */
 export const mockPractitioner: Practitioner = {
   id: "practitioner_001",
   name: siteConfig.practitionerName,
   title: siteConfig.practitionerTitle,
   qualifications: [
-    "[Qualification — e.g., Diploma in Homeopathic Medicine]",
-    "[Qualification — e.g., Registered Homeopath, professional body name]",
+    "BHMS (Bachelor of Homeopathic Medicine & Surgery)",
+    "Consulting Homeopathic Physician",
   ],
   registrationPlaceholder: "[Registration / License No.]",
   yearsExperiencePlaceholder: "[Years of Experience]",
-  languages: ["English"],
+  languages: ["English", "Telugu"," Hindi"],
   philosophy:
-    "Every consultation starts with listening. Before anything else, I want to understand your goals and what brought you here — the conversation itself, not a checklist, shapes how we work together going forward.",
+    "My commitment to you is simple: fresh energy, undivided attention, and genuine time to listen to your story. Together, we build a gentle, thoughtful path to your natural well-being — a space where your health is heard, valued, and understood.",
   values: [
-    "Unhurried, attentive consultations",
-    "Clear communication, in plain language",
-    "Respect for your privacy and your time",
-    "Honesty about what online consultation can and cannot offer",
+    "Fresh energy and undivided attention at every visit",
+    "Unhurried consultations that respect your time",
+    "Care for the whole person, not just individual symptoms",
+    "An ongoing relationship, not a one-time visit",
   ],
   areasOfConsultation: [
     "General wellness conversations",
@@ -33,5 +27,5 @@ export const mockPractitioner: Practitioner = {
   ],
   availabilitySummary:
     "Online consultation slots are released on a rolling basis — see live availability on the booking page.",
-  photoAlt: "Placeholder for a professional photograph of the practitioner",
+  photoAlt: "Photograph of Dr. Yamini Veduruparthi (placeholder)",
 };

@@ -15,27 +15,32 @@ const JOURNEY = [
   {
     icon: CalendarCheck2,
     title: "Book Appointment",
-    description: "You choose a time that works for you — no waiting rooms.",
+    description:
+      "Choose a morning or evening online slot that fits your schedule — no waiting rooms.",
   },
   {
     icon: MessagesSquare,
     title: "Consultation",
-    description: "An unhurried conversation about your goals and history.",
+    description:
+      "An unhurried conversation where I take the full time to listen to your health story and goals.",
   },
   {
     icon: ClipboardList,
     title: "Assessment",
-    description: "The practitioner reviews your full health picture with you.",
+    description:
+      "Together, we review your overall health picture to understand the root cause of your concerns.",
   },
   {
     icon: FileText,
-    title: "Treatment Plan",
-    description: "A personalized plan built around what you actually need.",
+    title: "Personalized Care",
+    description:
+      "A homeopathic approach shaped thoughtfully around your individual health picture.",
   },
   {
     icon: RefreshCcw,
     title: "Follow-up",
-    description: "Ongoing check-ins that keep the conversation going over time.",
+    description:
+      "Ongoing check-ins where I track your progress and keep the conversation going over time.",
   },
 ];
 
@@ -75,7 +80,7 @@ export function PatientJourney() {
         </ol>
 
         <p className="mt-10 text-center font-display text-lg italic text-sage-dark">
-          And when a new concern comes up, the story continues.
+          And when a new concern comes up, our conversation continues.
         </p>
       </Container>
     </section>

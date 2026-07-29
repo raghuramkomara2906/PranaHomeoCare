@@ -1,4 +1,4 @@
-"""Version 1 data model — 12 tables, per Database Model Design doc.
+"""Version 1 data model — per Database Model Design doc (+ Feature 11 accounts).
 
 Importing this package registers every table on Base.metadata (used by Alembic's
 env.py for autogenerate).
@@ -11,6 +11,7 @@ from app.models.appointment import (
     MeetingDetails,
 )
 from app.models.availability import AvailabilitySlot
+from app.models.account import AccountOtpChallenge, PatientAccount
 from app.models.booking import BookingRequest, OtpChallenge
 from app.models.clinic import ClinicSettings
 from app.models.events import AppointmentEvent, AuditEvent
@@ -23,6 +24,8 @@ __all__ = [
     "AvailabilitySlot",
     "BookingRequest",
     "OtpChallenge",
+    "PatientAccount",
+    "AccountOtpChallenge",
     "Appointment",
     "AppointmentAccessToken",
     "MeetingDetails",

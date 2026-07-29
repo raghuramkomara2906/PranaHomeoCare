@@ -1,92 +1,98 @@
 import type { Article } from "@/lib/types";
 import { siteConfig } from "@/config/site";
 
-/**
- * MOCK DATA — replace with a real API response from GET /api/v1/articles
- * once the backend is connected (see src/services/articles.service.ts).
- */
+/** Article cards + full bodies, shown on the Journal list and detail pages. */
 export const mockArticles: Article[] = [
   {
-    id: "article_first_consultation",
-    slug: "what-to-expect-first-online-consultation",
-    title: "What to Expect From Your First Online Consultation",
+    id: "article_whole_person",
+    slug: "how-homeopathy-looks-at-the-whole-person",
+    title: "How Homeopathy Looks at the Whole Person",
     summary:
-      "A walk-through of what actually happens in a first appointment, from joining the call to what to have ready beforehand.",
-    category: "Online Consultation",
-    author: siteConfig.practitionerName,
-    publishedDate: "2026-05-04",
-    reviewedDate: "2026-06-18",
-    readTimeMinutes: 5,
-    featured: true,
-    coverArtSeed: 1,
-  },
-  {
-    id: "article_video_space",
-    slug: "setting-up-your-video-visit-space",
-    title: "Setting Up a Comfortable, Private Space for Your Video Visit",
-    summary:
-      "Small changes to lighting, seating, and connectivity that make a real difference to how a video consultation feels.",
-    category: "Online Consultation",
-    author: siteConfig.practitionerName,
-    publishedDate: "2026-05-21",
-    reviewedDate: "2026-06-18",
-    readTimeMinutes: 4,
-    featured: true,
-    coverArtSeed: 2,
-  },
-  {
-    id: "article_daily_habits",
-    slug: "daily-habits-that-support-wellbeing",
-    title: "Simple Daily Habits That Support Long-Term Wellbeing",
-    summary:
-      "General, everyday habits — sleep, movement, hydration, routine — that consistently come up in wellness conversations.",
-    category: "General Wellness",
+      "Why we focus on your overall well-being, not just individual symptoms.",
+    category: "Holistic Wellness",
     author: siteConfig.practitionerName,
     publishedDate: "2026-06-02",
     reviewedDate: "2026-06-30",
-    readTimeMinutes: 6,
+    readTimeMinutes: 4,
+    featured: true,
+    coverArtSeed: 1,
+    body: [
+      {
+        type: "paragraph",
+        text:
+          "Homeopathy takes a different approach: we view your health as an interconnected system where physical symptoms, emotional stress, lifestyle, and daily energy all play a role.",
+      },
+      {
+        type: "paragraph",
+        text:
+          "During a consultation, we don't just look at what is bothering you — we look at how your body experiences it. By understanding your complete health picture, we can suggest a personalized approach intended to gently support your overall sense of well-being.",
+      },
+    ],
+  },
+  {
+    id: "article_what_to_share",
+    slug: "what-information-is-helpful-to-share",
+    title: "What Information Is Helpful to Share in Your Consultation?",
+    summary: "A quick guide on what to keep in mind before our conversation.",
+    category: "Getting Ready",
+    author: siteConfig.practitionerName,
+    publishedDate: "2026-06-10",
+    reviewedDate: "2026-06-30",
+    readTimeMinutes: 4,
+    featured: true,
+    coverArtSeed: 2,
+    body: [
+      {
+        type: "paragraph",
+        text:
+          "You don't need to prepare a formal presentation before our call. Sharing a few specific details, though, helps us build a much deeper understanding of your situation:",
+      },
+      {
+        type: "list",
+        items: [
+          "Your main concerns: what bothered you first, and how long it has been present.",
+          "Symptom triggers: whether weather, specific foods, time of day, or stress levels make things better or worse.",
+          "General body patterns: your sleep, appetite, thermal comfort (feeling naturally warmer or colder), and energy levels through the day.",
+          "Past medical history: any previous health conditions, ongoing medications, or medical reports.",
+        ],
+      },
+      {
+        type: "paragraph",
+        text:
+          "Remember: no detail is too small. Every piece helps paint a clear picture of your individual health.",
+      },
+    ],
+  },
+  {
+    id: "article_everyday_habits",
+    slug: "simple-everyday-habits-for-natural-vitality",
+    title: "Simple Everyday Habits for Natural Vitality",
+    summary:
+      "Gentle, everyday routines that support long-term balance and wellness.",
+    category: "Everyday Health",
+    author: siteConfig.practitionerName,
+    publishedDate: "2026-06-18",
+    reviewedDate: "2026-06-30",
+    readTimeMinutes: 5,
     featured: true,
     coverArtSeed: 3,
-  },
-  {
-    id: "article_rescheduling",
-    slug: "rescheduling-made-simple",
-    title: "Rescheduling or Cancelling: A Quick Guide",
-    summary:
-      "How rescheduling and cancellation work on this platform, and how to avoid last-minute stress.",
-    category: "Online Consultation",
-    author: siteConfig.practitionerName,
-    publishedDate: "2026-04-16",
-    reviewedDate: "2026-06-01",
-    readTimeMinutes: 3,
-    coverArtSeed: 4,
-  },
-  {
-    id: "article_family_routine",
-    slug: "family-routine-around-wellness-conversations",
-    title: "Building a Family Routine Around Wellness Conversations",
-    summary:
-      "Ideas for households that want to make space for regular, low-pressure conversations about wellbeing together.",
-    category: "Family Wellness",
-    author: siteConfig.practitionerName,
-    publishedDate: "2026-03-28",
-    reviewedDate: "2026-05-30",
-    readTimeMinutes: 5,
-    coverArtSeed: 5,
-  },
-  {
-    id: "article_sleep_movement_rest",
-    slug: "sleep-movement-and-rest-the-basics",
-    title: "Sleep, Movement, and Rest: The Basics That Matter Most",
-    summary:
-      "A general look at the everyday fundamentals that most wellbeing conversations circle back to, sooner or later.",
-    category: "Healthy Lifestyle",
-    author: siteConfig.practitionerName,
-    publishedDate: "2026-02-19",
-    reviewedDate: "2026-05-12",
-    readTimeMinutes: 6,
-    coverArtSeed: 6,
+    body: [
+      {
+        type: "paragraph",
+        text:
+          "Gentle, supportive daily practices go hand in hand with your consultations. Here are a few foundational habits to help keep your body balanced:",
+      },
+      {
+        type: "list",
+        items: [
+          "Hydrate mindfully: sip fresh water through the day to keep your digestion and energy active.",
+          "Prioritize unhurried rest: aim for consistent sleep timings to give your nervous system time to repair and reset.",
+          "Gentle daily movement: light walking or stretching improves circulation and helps release physical and mental tension.",
+          "Listen to your body: notice early signs of fatigue or stress, and give yourself space to pause before burnout sets in.",
+        ],
+      },
+    ],
   },
 ];
 
-export const featuredArticles = mockArticles.filter((article) => article.featured);
+export const featuredArticles: Article[] = mockArticles.filter((a) => a.featured);

@@ -10,13 +10,13 @@ export function PatientReality() {
       <Container className="max-w-2xl text-center">
         <Reveal>
           <p className="font-display text-2xl leading-relaxed text-ink md:text-3xl">
-            Many people live with health concerns that quietly shape daily
-            life. Finding the right practitioner can feel overwhelming —
-            especially when appointments feel rushed, or leave more
-            questions than answers.
+            Living with health concerns can feel overwhelming — especially when
+            consultations feel rushed or leave you with more questions than
+            answers.
           </p>
           <p className="mt-6 font-display text-2xl italic leading-relaxed text-sage-dark md:text-3xl">
-            You deserve a different kind of first conversation.
+            You deserve a space where your health is heard, valued, and
+            understood.
           </p>
           <BotanicalDivider className="mx-auto mt-8 h-6 w-auto" />
         </Reveal>

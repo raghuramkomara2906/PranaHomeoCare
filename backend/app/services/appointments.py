@@ -125,11 +125,11 @@ def access_view(db: Session, appointment: Appointment) -> dict:
     clinic = _clinic(db)
     slot = db.get(AvailabilitySlot, appointment.slot_id)
     is_tele = appointment.consultation_type == ConsultationType.TELECONSULTATION.value
-    cutoff = clinic.cancellation_cutoff_minutes
-    eligible = appointment.status == AppointmentStatus.CONFIRMED.value and _within_cutoff(
-        now, slot.start_at, cutoff
-    )
-    deadline = to_ist(slot.start_at - timedelta(minutes=cutoff))
+    is_confirmed = appointment.status == AppointmentStatus.CONFIRMED.value
+    cancel_cutoff = clinic.cancellation_cutoff_minutes
+    reschedule_cutoff = clinic.reschedule_cutoff_minutes
+    can_cancel = is_confirmed and _within_cutoff(now, slot.start_at, cancel_cutoff)
+    can_reschedule = is_confirmed and _within_cutoff(now, slot.start_at, reschedule_cutoff)
     return {
         "booking_reference": appointment.booking_reference,
         "consultation_type": appointment.consultation_type,
@@ -141,10 +141,10 @@ def access_view(db: Session, appointment: Appointment) -> dict:
         "masked_mobile": mask_mobile(appointment.mobile_e164),
         "clinic_phone": appointment.teleconsultation_phone_e164 if is_tele else None,
         "meeting_status": _meeting_status(db, appointment),
-        "cancellation_deadline": deadline,
-        "reschedule_deadline": deadline,
-        "can_cancel": eligible,
-        "can_reschedule": eligible,
+        "cancellation_deadline": to_ist(slot.start_at - timedelta(minutes=cancel_cutoff)),
+        "reschedule_deadline": to_ist(slot.start_at - timedelta(minutes=reschedule_cutoff)),
+        "can_cancel": can_cancel,
+        "can_reschedule": can_reschedule,
     }
 
 
@@ -226,12 +226,16 @@ def cancel_appointment(db: Session, raw_token: str) -> Appointment:
 
 
 # --- reschedule options ----------------------------------------------------
-def reschedule_options(db: Session, raw_token: str, from_date: date | None = None, to_date: date | None = None) -> dict:
+def reschedule_options_for(
+    db: Session,
+    appointment: Appointment,
+    from_date: date | None = None,
+    to_date: date | None = None,
+) -> dict:
     now = utcnow()
-    appointment, _ = resolve(db, raw_token)
     clinic = _clinic(db)
     slot = db.get(AvailabilitySlot, appointment.slot_id)
-    cutoff = clinic.cancellation_cutoff_minutes
+    cutoff = clinic.reschedule_cutoff_minutes
     can = appointment.status == AppointmentStatus.CONFIRMED.value and _within_cutoff(
         now, slot.start_at, cutoff
     )
@@ -250,7 +254,7 @@ def reschedule_options(db: Session, raw_token: str, from_date: date | None = Non
             {"date": d.isoformat(), "available_count": counts[d]} for d in sorted(counts)
         ]
 
-    db.commit()  # persist last_used_at
+    db.commit()  # persist last_used_at (if any)
     return {
         "timezone": settings.default_timezone,
         "reschedule_deadline": deadline,
@@ -263,6 +267,11 @@ def reschedule_options(db: Session, raw_token: str, from_date: date | None = Non
         },
         "dates": dates,
     }
+
+
+def reschedule_options(db: Session, raw_token: str, from_date: date | None = None, to_date: date | None = None) -> dict:
+    appointment, _ = resolve(db, raw_token)
+    return reschedule_options_for(db, appointment, from_date, to_date)
 
 
 # --- §11.4: reschedule -----------------------------------------------------
@@ -298,7 +307,7 @@ def perform_reschedule(
     old_slot = locked[str(from_slot_id)]
     new_slot = locked.get(new_slot_id)
 
-    if enforce_cutoff and not _within_cutoff(now, old_slot.start_at, clinic.cancellation_cutoff_minutes):
+    if enforce_cutoff and not _within_cutoff(now, old_slot.start_at, clinic.reschedule_cutoff_minutes):
         raise HTTPException(
             409, "Online rescheduling is no longer available. Please contact the clinic."
         )
@@ -329,14 +338,19 @@ def perform_reschedule(
     count = appointment.reschedule_count
 
     is_tele = appointment.consultation_type == ConsultationType.TELECONSULTATION.value
+    notify_video_updated = False
     if not is_tele:
         md = (
             db.query(MeetingDetails)
             .filter(MeetingDetails.appointment_id == appointment.id)
             .first()
         )
-        if md:
-            md.status = MeetingStatus.REVIEW_REQUIRED.value  # doctor must re-confirm the link
+        # A Zoom link is time-agnostic, so a reschedule keeps it and stays
+        # ready (decision B) — we just re-notify the patient with the new time.
+        # If no link was added yet, the meeting stays pending.
+        if md and md.join_url_encrypted:
+            md.status = MeetingStatus.READY.value
+            notify_video_updated = True
 
     _cancel_future_reminders(db, appointment.id, now)
     if is_tele:
@@ -376,6 +390,17 @@ def perform_reschedule(
         deduplication_key=f"appointment_rescheduled:{appointment.id}:{count}",
         appointment_id=appointment.id,
     )
+    if notify_video_updated:
+        queue_notification(
+            db,
+            notification_type=NotificationType.VIDEO_LINK_UPDATED.value,
+            recipient_e164=appointment.mobile_e164,
+            template_key="video_link_updated",
+            template_data={"bookingReference": appointment.booking_reference},
+            scheduled_at=now,
+            deduplication_key=f"video_link_updated:{appointment.id}:{count}",
+            appointment_id=appointment.id,
+        )
 
     try:
         db.flush()  # surfaces the one-confirmed-per-slot unique index as a race guard
@@ -396,16 +421,13 @@ def reschedule_appointment(db: Session, raw_token: str, new_slot_id: str) -> App
 
 # --- WF-004: video join window --------------------------------------------
 def _video_window(clinic, slot):
-    from datetime import timedelta
-
     open_at = slot.start_at - timedelta(minutes=clinic.video_join_early_minutes)
     close_at = slot.end_at + timedelta(minutes=settings.video_join_grace_minutes)
     return open_at, close_at
 
 
-def join_status(db: Session, raw_token: str) -> dict:
+def join_status_for(db: Session, appointment: Appointment) -> dict:
     now = utcnow()
-    appointment, _ = resolve(db, raw_token)
     if appointment.consultation_type != ConsultationType.VIDEO_CONSULTATION.value:
         raise HTTPException(400, "This is not a video consultation.")
 
@@ -413,7 +435,7 @@ def join_status(db: Session, raw_token: str) -> dict:
     slot = db.get(AvailabilitySlot, appointment.slot_id)
 
     def result(state, can_join, message, join_opens_at=None, meeting_status=None):
-        db.commit()  # persist last_used_at
+        db.commit()  # persist last_used_at (if a token was resolved)
         return {
             "state": state,
             "can_join": can_join,
@@ -448,13 +470,17 @@ def join_status(db: Session, raw_token: str) -> dict:
                   meeting_status=md.status)
 
 
-def join(db: Session, raw_token: str) -> dict:
+def join_status(db: Session, raw_token: str) -> dict:
+    appointment, _ = resolve(db, raw_token)
+    return join_status_for(db, appointment)
+
+
+def join_for(db: Session, appointment: Appointment) -> dict:
     """Final gate: returns the decrypted Zoom URL only after re-validating every
     condition. This is the sole place the raw URL leaves the backend."""
     from app.core.crypto import decrypt_secret
 
     now = utcnow()
-    appointment, _ = resolve(db, raw_token, lock_appointment=True)
     if appointment.consultation_type != ConsultationType.VIDEO_CONSULTATION.value:
         raise HTTPException(400, "This is not a video consultation.")
     if appointment.status != AppointmentStatus.CONFIRMED.value:
@@ -473,5 +499,10 @@ def join(db: Session, raw_token: str) -> dict:
         raise HTTPException(409, "The joining window for this consultation has ended.")
 
     url = decrypt_secret(md.join_url_encrypted)
-    db.commit()  # persist last_used_at
+    db.commit()  # persist last_used_at (if a token was resolved)
     return {"join_url": url}
+
+
+def join(db: Session, raw_token: str) -> dict:
+    appointment, _ = resolve(db, raw_token, lock_appointment=True)
+    return join_for(db, appointment)

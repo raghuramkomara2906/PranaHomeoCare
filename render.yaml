@@ -1,0 +1,71 @@
+databases:
+  - name: homeopath-db
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: homeopath-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    region: singapore
+    healthCheckPath: /api/v1/health
+    preDeployCommand: "alembic upgrade head && python -m app.seed"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: homeopath-db
+          property: connectionString
+      - key: SMS_PROVIDER
+        value: fast2sms
+      - key: SMS_API_KEY
+        sync: false
+      - key: FAST2SMS_ROUTE
+        value: q
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: TOKEN_HASH_PEPPER
+        generateValue: true
+      - key: MEETING_ENCRYPTION_KEY
+        sync: false
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: CORS_ORIGINS
+        value: https://pranahomeocare.com
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+
+  - type: worker
+    name: homeopath-worker
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    region: singapore
+    dockerCommand: python -m app.worker
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: homeopath-db
+          property: connectionString
+      - key: SMS_PROVIDER
+        value: fast2sms
+      - key: SMS_API_KEY
+        sync: false
+      - key: FAST2SMS_ROUTE
+        value: q
+
+  - type: web
+    name: homeopath-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: singapore
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://api.pranahomeocare.com
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://pranahomeocare.com

@@ -30,7 +30,7 @@ export default function HomePage() {
       <AboutPreview practitioner={mockPractitioner} />
       <StatsBand />
       <PatientReality />
-      <ServicesPreview services={mockServices} />
+      <ServicesPreview />
       <PatientJourney />
       <HowItWorksPreview />
       <Testimonials testimonials={mockTestimonials} />

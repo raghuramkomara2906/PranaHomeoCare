@@ -324,3 +324,35 @@ export interface AdminSlotListResponse {
   timezone: string;
   slots: AdminSlot[];
 }
+// --- patient accounts (Feature 11) -----------------------------------------
+export interface AccountMe {
+  id: string;
+  mobileMasked: string;
+}
+
+export interface AccountOtpChallenge {
+  maskedMobile: string;
+  otpExpiresAt: string;
+  resendAvailableInSeconds: number;
+}
+
+export interface AccountAppointmentItem {
+  id: string;
+  bookingReference: string;
+  consultationType: ConsultationType;
+  status: AppointmentStatusValue;
+  startAt: string;
+  endAt: string;
+  timezone: string;
+  clinicPhone: string | null;
+  meetingStatus: MeetingStatusValue | null;
+  canCancel: boolean;
+  canReschedule: boolean;
+  cancellationDeadline: string;
+  rescheduleDeadline: string;
+}
+
+export interface AccountAppointmentsOut {
+  timezone: string;
+  appointments: AccountAppointmentItem[];
+}

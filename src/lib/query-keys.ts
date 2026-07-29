@@ -29,6 +29,10 @@ export const queryKeys = {
       slots: (range?: { fromDate?: string; toDate?: string }) =>
       ["admin", "slots", range ?? {}] as const,
   },
+  account: {
+    me: ["account", "me"] as const,
+    appointments: ["account", "appointments"] as const,
+  },
   chatbot: {
     intro: ["chatbot", "intro"] as const,
   },

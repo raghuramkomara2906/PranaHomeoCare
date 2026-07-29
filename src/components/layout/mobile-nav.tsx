@@ -62,7 +62,7 @@ export function MobileNav() {
         <div className="mt-auto flex flex-col gap-3 border-t border-border p-6">
           <SheetClose asChild>
             <Button asChild variant="outline" size="lg">
-              <Link href="/admin/login">Practitioner</Link>
+              <Link href="/login">login</Link>
             </Button>
           </SheetClose>
           <SheetClose asChild>
