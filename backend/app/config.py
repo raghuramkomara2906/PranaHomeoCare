@@ -77,14 +77,12 @@ class Settings(BaseSettings):
     seed_doctor_qualification: str = "[Qualification]"
     seed_terms_version: str = "v1"
     
-    @field_validator("database_url")
-    @classmethod
-    def _normalize_db_scheme(cls, v: str) -> str:
-        # Managed hosts (Render/Neon/etc.) hand out a bare postgresql:// URL;
-        # SQLAlchemy + psycopg3 needs the driver in the scheme.
-        if v.startswith("postgresql://"):
-            return "postgresql+psycopg://" + v[len("postgresql://"):]
-        return v
+@field_validator("database_url")
+@classmethod
+def _normalize_db_scheme(cls, v: str) -> str:
+    if v.startswith("postgresql://"):
+        return "postgresql+psycopg://" + v[len("postgresql://"):]
+    return v
 
     @property
     def cors_origin_list(self) -> list[str]:
