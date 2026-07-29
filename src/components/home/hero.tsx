@@ -62,12 +62,12 @@ export function Hero() {
                 aria-hidden="true"
               />
               <div className="absolute inset-[12%] overflow-hidden rounded-[36%]">
-  <img
-    src="/dr-yamini.jpg"
-    alt="Dr. Yamini Veduruparthi"
-    className="h-full w-full object-cover object-top"
-  />
-</div>
+              <img
+                src="public/images/dr-yamini.jpg"
+                alt="Dr. Yamini Veduruparthi"
+                className="h-full w-full object-cover object-top"
+               />
+              </div>
             </div>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row lg:absolute lg:right-0 lg:top-6 lg:mt-0 lg:max-w-[13rem] lg:flex-col lg:items-end">
