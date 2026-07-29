@@ -1,6 +1,6 @@
 databases:
   - name: homeopath-db
-    plan: basic-256mb
+    plan: free
     postgresMajorVersion: "16"
 
 services:
