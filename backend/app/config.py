@@ -1,7 +1,5 @@
+from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
-
-
 
 
 class Settings(BaseSettings):
@@ -52,23 +50,21 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
     otp_resend_cooldown_seconds: int = 45
     otp_max_resends: int = 3
-    # A booking hold normally lives exactly as long as the OTP.
     booking_hold_ttl_seconds: int = 300
 
-    # --- SMS provider (worker reads these; empty => dev "log only" mode) ---
+    # --- SMS provider ---
     sms_provider: str = "console"
     sms_api_key: str = ""
     sms_sender_id: str = ""
     fast2sms_route: str = "q"
-    # 2Factor — send-your-own-OTP (OTP_PROVIDER=twofactor)
-    otp_provider: str = ""           # if empty, falls back to sms_provider
+    otp_provider: str = ""
     twofactor_api_key: str = ""
-    twofactor_otp_template: str = "" # leave empty on trial/non-DLT plan
+    twofactor_otp_template: str = ""
 
     # --- CORS ---
     cors_origins: str = "http://localhost:3000,http://localhost:3001"
 
-    # --- Bootstrap seed (clinic_settings + first admin/doctor) ---
+    # --- Bootstrap seed ---
     seed_admin_email: str = "doctor@example.com"
     seed_admin_password: str = "changeme123"
     seed_clinic_name: str = "[Clinic Name]"
@@ -76,18 +72,18 @@ class Settings(BaseSettings):
     seed_doctor_display_name: str = "[Practitioner Name]"
     seed_doctor_qualification: str = "[Qualification]"
     seed_terms_version: str = "v1"
-    
-@field_validator("database_url")
-@classmethod
-def _normalize_db_scheme(cls, v: str) -> str:
-    if v.startswith("postgresql://"):
-        return "postgresql+psycopg://" + v[len("postgresql://"):]
-    return v
 
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_db_scheme(cls, v: str) -> str:
+        if v.startswith("postgresql://"):
+            return "postgresql+psycopg://" + v[len("postgresql://"):]
+        return v
+
+    @computed_field
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
-    
 
 
 settings = Settings()
