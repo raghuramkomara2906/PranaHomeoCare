@@ -5,12 +5,18 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import settings
 
+
+def _normalize_url(url: str) -> str:
+    """Render's managed Postgres provides postgresql:// but SQLAlchemy+psycopg3
+    requires postgresql+psycopg://. Normalize here as the last line of defence."""
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url[len("postgresql://"):]
+    return url
+
+
 engine = create_engine(
-    settings.database_url,
+    _normalize_url(settings.database_url),
     future=True,
-    # Always read/write timestamptz in UTC regardless of the server's local
-    # timezone, so every API response is consistently "...Z" — matching the
-    # *Utc-suffixed fields in the frontend's TypeScript types.
     connect_args={"options": "-c timezone=UTC"},
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
