@@ -50,11 +50,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               pathname?.startsWith("/admin/appointments") ?? false
             )}
             {link(
-              "/admin/appointments",
-              "Appointments",
-              pathname?.startsWith("/admin/appointments") ?? false
-            )}
-            {link(
               "/admin/slots",
               "Availability",
               pathname?.startsWith("/admin/slots") ?? false
