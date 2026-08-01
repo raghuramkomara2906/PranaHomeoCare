@@ -24,12 +24,18 @@ PATIENT_SESSION_COOKIE = settings.patient_session_cookie
 
 
 # --- Admin password hashing -------------------------------------------------
+# bcrypt hard-rejects (ValueError) any password whose UTF-8 encoding exceeds
+# 72 bytes rather than truncating it, so we truncate explicitly here — this
+# matches bcrypt's historical behavior and keeps hash/verify symmetric.
 def hash_password(plain_password: str) -> str:
-    return bcrypt.hashpw(plain_password.encode(), bcrypt.gensalt()).decode()
+    return bcrypt.hashpw(plain_password.encode()[:72], bcrypt.gensalt()).decode()
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(plain_password.encode(), password_hash.encode())
+    try:
+        return bcrypt.checkpw(plain_password.encode()[:72], password_hash.encode())
+    except ValueError:
+        return False
 
 
 # --- Admin session token ----------------------------------------------------

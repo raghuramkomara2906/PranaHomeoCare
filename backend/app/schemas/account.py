@@ -18,12 +18,12 @@ class OtpChallengeOut(CamelModel):
 class RegisterConfirmIn(CamelModel):
     mobile_number: str
     otp: str
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=72)
 
 
 class LoginIn(CamelModel):
     mobile_number: str
-    password: str
+    password: str = Field(max_length=72)
 
 
 class AccountMe(CamelModel):
@@ -59,4 +59,4 @@ class PasswordResetOtpIn(CamelModel):
 class PasswordResetConfirmIn(CamelModel):
     mobile_number: str
     otp: str
-    password: str = Field(min_length=8)
+    password: str = Field(min_length=8, max_length=72)
