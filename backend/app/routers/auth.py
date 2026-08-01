@@ -9,6 +9,8 @@ from app.core.deps import get_current_admin
 from app.core.security import (
     ADMIN_SESSION_COOKIE,
     create_admin_token,
+    hash_password,
+    needs_rehash,
     verify_password,
 )
 from app.database import get_db
@@ -95,6 +97,8 @@ def login(
         raise invalid
 
     # Success — reset counters, stamp last login, issue the session cookie.
+    if needs_rehash(admin.password_hash):
+        admin.password_hash = hash_password(body.password)
     admin.failed_login_attempts = 0
     admin.locked_until = None
     admin.last_login_at = now

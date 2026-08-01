@@ -14,28 +14,43 @@ import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import bcrypt
+import bcrypt  # legacy-hash verification only — never used to create new hashes
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHash, VerifyMismatchError
 
 from app.config import settings
 
 ADMIN_SESSION_COOKIE = settings.admin_session_cookie
 PATIENT_SESSION_COOKIE = settings.patient_session_cookie
 
+_ph = PasswordHasher()
 
-# --- Admin password hashing -------------------------------------------------
-# bcrypt hard-rejects (ValueError) any password whose UTF-8 encoding exceeds
-# 72 bytes rather than truncating it, so we truncate explicitly here — this
-# matches bcrypt's historical behavior and keeps hash/verify symmetric.
+
+# --- Admin/patient password hashing -----------------------------------------
+# Argon2id: no arbitrary length cap, memory-hard against GPU/ASIC cracking.
+# Accounts created before this switch still have bcrypt hashes ("$2a$"/"$2b$"/
+# "$2y$" prefix); verify_password keeps checking those with bcrypt so existing
+# logins don't break, and needs_rehash() tells the caller to re-hash with
+# argon2 the next time that password is confirmed correct.
 def hash_password(plain_password: str) -> str:
-    return bcrypt.hashpw(plain_password.encode()[:72], bcrypt.gensalt()).decode()
+    return _ph.hash(plain_password)
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
+    if password_hash.startswith("$2"):
+        try:
+            return bcrypt.checkpw(plain_password.encode()[:72], password_hash.encode())
+        except ValueError:
+            return False
     try:
-        return bcrypt.checkpw(plain_password.encode()[:72], password_hash.encode())
-    except ValueError:
+        return _ph.verify(password_hash, plain_password)
+    except (VerifyMismatchError, InvalidHash):
         return False
+
+
+def needs_rehash(password_hash: str) -> bool:
+    return password_hash.startswith("$2")
 
 
 # --- Admin session token ----------------------------------------------------

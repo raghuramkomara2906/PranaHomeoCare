@@ -14,6 +14,7 @@ from app.core.security import (
     generate_numeric_otp,
     hash_password,
     hash_secret,
+    needs_rehash,
     verify_password,
     verify_secret,
 )
@@ -152,6 +153,8 @@ def login(db: Session, raw_mobile: str, password: str) -> PatientAccount:
             account.failed_login_count = 0
         db.commit()
         raise invalid
+    if needs_rehash(account.password_hash):
+        account.password_hash = hash_password(password)
     account.failed_login_count = 0
     account.locked_until = None
     account.last_login_at = now
