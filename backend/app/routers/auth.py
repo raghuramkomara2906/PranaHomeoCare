@@ -30,7 +30,12 @@ def _set_session_cookie(response: Response, token: str) -> None:
         value=token,
         httponly=True,
         secure=settings.cookie_secure,
-        samesite="lax",
+        # Frontend and API are on different domains in production (Vercel vs
+        # Render), so the cookie must be SameSite=None to be sent on
+        # cross-site fetch() calls. None requires Secure, which is only true
+        # in production — locally frontend/backend share "localhost" as the
+        # registrable domain, so Lax still works there.
+        samesite="none" if settings.cookie_secure else "lax",
         max_age=settings.jwt_expire_minutes * 60,
         path="/",
     )
