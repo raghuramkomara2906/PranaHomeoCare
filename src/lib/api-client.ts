@@ -10,11 +10,7 @@
  *   }
  */
 
-// Unset means no backend configured yet. An empty string is deliberate: it
-// means "call this app's own origin" — API_PROXY_TARGET in next.config.ts
-// rewrites those requests to the real backend so the session cookie stays
-// first-party. See next.config.ts and .env.example.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 export class ApiError extends Error {
   status: number;
@@ -29,7 +25,7 @@ export async function apiFetch<T>(
   path: string,
   init?: RequestInit
 ): Promise<T> {
-  if (API_BASE_URL === undefined) {
+  if (!API_BASE_URL) {
     throw new ApiError(
       "NEXT_PUBLIC_API_BASE_URL is not set — this call has no backend to reach yet.",
       0

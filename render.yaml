@@ -8,6 +8,8 @@ services:
     region: singapore
     healthCheckPath: /api/v1/health
     preDeployCommand: "sh deploy.sh"
+    domains:
+      - api.pranahomeocare.com
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -37,3 +39,20 @@ services:
         value: doctor@pranahomeocare.com
       - key: SEED_ADMIN_PASSWORD
         sync: false
+
+  - type: web
+    name: homeopath-frontend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: singapore
+    healthCheckPath: /
+    domains:
+      - pranahomeocare.com
+      - www.pranahomeocare.com
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://api.pranahomeocare.com
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://pranahomeocare.com

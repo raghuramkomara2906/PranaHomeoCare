@@ -39,9 +39,9 @@ def _set_session(response: Response, account: PatientAccount) -> None:
         value=create_patient_token(account.id),
         httponly=True,
         secure=settings.cookie_secure,
-        # See app/routers/auth.py::_set_session_cookie for why this is
-        # conditional — cross-site in production, same-site in local dev.
-        samesite="none" if settings.cookie_secure else "lax",
+        # See app/routers/auth.py::_set_session_cookie — frontend and API
+        # share a registrable domain, so Lax is correct here too.
+        samesite="lax",
         max_age=settings.jwt_expire_minutes * 60,
     )
 
