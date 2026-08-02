@@ -12,11 +12,6 @@ import {
   OrganicBlob,
 } from "@/components/shared/botanical-motifs";
 
-const FLOATING_STATS = [
-  { icon: HeartHandshake, label: "Free consultation" },
-  { icon: Clock, label: "45–60 min first visit" },
-  { icon: Video, label: "Online — video or phone" },
-];
 
 export function Hero() {
   return (
@@ -24,9 +19,6 @@ export function Hero() {
       <Container>
         <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-2 lg:gap-10">
           <Reveal>
-            <p className="text-eyebrow text-sage-dark">
-              BHMS &bull; Consulting Homeopathic Physician
-            </p>
             <h1 className="mt-5 max-w-xl font-display text-4xl leading-[1.08] text-ink sm:text-5xl lg:text-6xl">
               Attentive care for your natural{" "}
               <span className="italic text-sage-dark">well-being</span>
@@ -54,36 +46,24 @@ export function Hero() {
             </p>
           </Reveal>
 
-          <Reveal delay={0.12} className="relative mx-auto w-full max-w-md lg:max-w-none">
-            <div className="relative mx-auto aspect-[4/5] w-full max-w-sm">
+          <Reveal delay={0.12} className="relative mx-auto w-full max-w-xl lg:-ml-6 lg:max-w-none">
+            <div className="relative mx-auto aspect-[8/10] w-full max-w-lg lg:max-w-2xl">
               <OrganicBlob className="absolute inset-0 h-full w-full text-sage-light" />
               <BotanicalSprig
                 className="absolute -right-6 top-[6%] h-[85%] w-auto text-sage/20"
                 aria-hidden="true"
               />
-              <div className="absolute inset-[12%] overflow-hidden rounded-[36%]">
               <img
-                src="public/images/dr-yamini.jpg"
+                src="/images/home.jpg"
                 alt="Dr. Yamini Veduruparthi"
-                className="h-full w-full object-cover object-top"
-               />
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row lg:absolute lg:right-0 lg:top-6 lg:mt-0 lg:max-w-[13rem] lg:flex-col lg:items-end">
-              {FLOATING_STATS.map((stat) => (
-                <Card
-                  key={stat.label}
-                  className="flex w-full items-center gap-3 px-4 py-3 shadow-lifted sm:w-auto lg:w-full"
-                >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-sage-light text-sage-dark">
-                    <stat.icon className="size-4" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0 text-left">
-                    <span className="block text-sm text-ink">{stat.label}</span>
-                  </span>
-                </Card>
-              ))}
+                className="absolute inset-[2%] h-[96%] w-[96%] object-cover object-top"
+                style={{
+                  maskImage:
+                    "radial-gradient(ellipse 78% 100% at 68% 50%, black 38%, transparent 90%)",
+                  WebkitMaskImage:
+                    "radial-gradient(ellipse 78% 100% at 68% 50%, black 38%, transparent 90%)",
+                }}
+              />
             </div>
           </Reveal>
         </div>

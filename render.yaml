@@ -32,7 +32,7 @@ services:
       - key: COOKIE_SECURE
         value: "true"
       - key: CORS_ORIGINS
-        value: https://pranahomeocare.com
+        value: https://pranahomeocare.com,https://www.pranahomeocare.com
       - key: SEED_ADMIN_EMAIL
         value: doctor@pranahomeocare.com
       - key: SEED_ADMIN_PASSWORD

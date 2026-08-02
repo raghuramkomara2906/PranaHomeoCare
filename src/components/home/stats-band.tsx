@@ -5,10 +5,10 @@ import { PlaceholderTag } from "@/components/shared/placeholder-tag";
 import { Reveal } from "@/components/shared/reveal";
 
 const STATS = [
-  { value: "15+", label: "Years of Experience" },
-  { value: "5,000+", label: "Happy Patients" },
-  { value: "50+", label: "Medical Camps" },
-  { value: "10,000+", label: "Online Consultations" },
+  { value: "2+", label: "Years of Experience" },
+  { value: "100+", label: "Happy Patients" },
+  { value: "30+", label: "Medical Camps" },
+  { value: "100+", label: "Online Consultations" },
 ];
 
 export function StatsBand() {
@@ -30,9 +30,6 @@ export function StatsBand() {
             </Reveal>
           ))}
         </ul>
-        <div className="mt-6 flex justify-center">
-          <PlaceholderTag label="Figures are placeholders — verify before publishing" />
-        </div>
       </Container>
     </section>
   );
