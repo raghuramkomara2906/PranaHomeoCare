@@ -16,7 +16,9 @@ export const siteConfig = {
   tagline: "Attentive care for your natural well-being",
   description:
     "Compassionate homeopathic consultations with an individualized approach for every stage of life.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://pranahomeocare.com",
+  // `||`, not `??`: Docker's `ENV FOO=$BAR` sets FOO to "" (not unset) when
+  // the ARG wasn't supplied at build time, and `new URL("")` throws.
+  url: process.env.NEXT_PUBLIC_SITE_URL || "https://pranahomeocare.com",
 
   // The individual practitioner's identity — still a placeholder until
   // supplied and verified, distinct from the clinic brand above.
