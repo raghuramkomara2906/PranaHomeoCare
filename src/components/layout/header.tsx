@@ -33,11 +33,12 @@ export function Header() {
           : "bg-transparent"
       )}
     >
-      <Container className="flex h-20 items-center justify-between gap-6">
+      <Container className="flex h-20 items-center gap-8">
         <Logo />
 
+        {/* Desktop nav — left aligned, starts right after logo */}
         <nav
-          className="hidden items-center gap-1 lg:flex"
+          className="hidden items-center gap-2 lg:flex"
           aria-label="Primary"
         >
           {HEADER_NAV_ITEMS.map((item) => {
@@ -47,7 +48,7 @@ export function Header() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-sage-light hover:text-sage-dark",
+                  "rounded-full px-5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-sage-light hover:text-sage-dark whitespace-nowrap",
                   isActive && "bg-sage-light text-sage-dark"
                 )}
               >
@@ -58,15 +59,16 @@ export function Header() {
           <Link
             href="/login"
             className={cn(
-              "rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-sage-light hover:text-sage-dark",
+              "rounded-full px-5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-sage-light hover:text-sage-dark whitespace-nowrap",
               pathname === "/login" && "bg-sage-light text-sage-dark"
             )}
           >
-            login
+            Login
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2">
+        {/* Book button pinned to the right */}
+        <div className="flex items-center gap-3 ml-auto">
           <Button asChild className="hidden sm:inline-flex">
             <Link href="/book">
               Book Consultation
