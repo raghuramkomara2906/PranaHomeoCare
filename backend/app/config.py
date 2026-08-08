@@ -73,6 +73,11 @@ class Settings(BaseSettings):
     seed_doctor_qualification: str = "BHMS (Bachelor of Homeopathic Medicine & Surgery)"
     seed_terms_version: str = "v1"
 
+    # Twilio
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
+
     @field_validator("database_url")
     @classmethod
     def _normalize_db_scheme(cls, v: str) -> str:

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "@/config/site";
@@ -10,12 +10,18 @@ import { Button, ButtonDot } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
 import { Logo } from "@/components/shared/logo";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { useAccountMe, useAccountLogout } from "@/hooks/use-account";
 
 const HEADER_NAV_ITEMS = [{ label: "Home", href: "/" }, ...NAV_ITEMS];
 
 export function Header() {
   const [scrolled, setScrolled] = React.useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  const me = useAccountMe();
+  const logout = useAccountLogout();
+  const isLoggedIn = !!me.data;
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 80);
@@ -23,6 +29,12 @@ export function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  function handleSignOut() {
+    logout.mutate(undefined, {
+      onSuccess: () => router.replace("/"),
+    });
+  }
 
   return (
     <header
@@ -56,25 +68,43 @@ export function Header() {
               </Link>
             );
           })}
-          <Link
-            href="/login"
-            className={cn(
-              "rounded-full px-5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-sage-light hover:text-sage-dark whitespace-nowrap",
-              pathname === "/login" && "bg-sage-light text-sage-dark"
-            )}
-          >
-            Login
-          </Link>
+
+          {/* Auth-aware: Login or Sign out */}
+          {isLoggedIn ? (
+            <button
+              onClick={handleSignOut}
+              disabled={logout.isPending}
+              className="rounded-full px-5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-sage-light hover:text-sage-dark whitespace-nowrap"
+            >
+              {logout.isPending ? "Signing out..." : "Sign out"}
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className={cn(
+                "rounded-full px-5 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-sage-light hover:text-sage-dark whitespace-nowrap",
+                pathname === "/login" && "bg-sage-light text-sage-dark"
+              )}
+            >
+              Login
+            </Link>
+          )}
         </nav>
 
-        {/* Book button pinned to the right */}
+        {/* Right side — Book button or My Account */}
         <div className="flex items-center gap-3 ml-auto">
-          <Button asChild className="hidden sm:inline-flex">
-            <Link href="/book">
-              Book Consultation
-              <ButtonDot />
-            </Link>
-          </Button>
+          {isLoggedIn ? (
+            <Button asChild variant="outline" className="hidden sm:inline-flex">
+              <Link href="/account">My Account</Link>
+            </Button>
+          ) : (
+            <Button asChild className="hidden sm:inline-flex">
+              <Link href="/book">
+                Book Consultation
+                <ButtonDot />
+              </Link>
+            </Button>
+          )}
           <MobileNav />
         </div>
       </Container>

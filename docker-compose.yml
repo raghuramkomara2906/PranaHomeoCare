@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: homeopath_dev
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -21,6 +21,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/homeopath_dev
       RUN_MIGRATIONS: "true"
+      OTP_PROVIDER: console
       SMS_PROVIDER: console
       JWT_SECRET_KEY: local-dev-secret
       TOKEN_HASH_PEPPER: local-dev-pepper
@@ -38,6 +39,7 @@ services:
     command: python -m app.worker
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/homeopath_dev
+      OTP_PROVIDER: console
       SMS_PROVIDER: console
     depends_on:
       backend:

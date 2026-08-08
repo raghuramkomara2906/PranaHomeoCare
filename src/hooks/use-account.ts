@@ -5,6 +5,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import * as svc from "@/services/account.service";
 
+// ---------------------------------------------------------------------------
+// Session / profile
+// ---------------------------------------------------------------------------
+
 export function useAccountMe(enabled = true) {
   return useQuery({
     queryKey: queryKeys.account.me,
@@ -15,13 +19,17 @@ export function useAccountMe(enabled = true) {
   });
 }
 
-export function useAccountAppointments(enabled = true) {
-  return useQuery({
-    queryKey: queryKeys.account.appointments,
-    queryFn: svc.getAccountAppointments,
-    enabled,
+export function useAccountLogout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: svc.accountLogout,
+    onSuccess: () => qc.removeQueries({ queryKey: ["account"] }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// OTP-based registration (existing — re-enabled when DLT SMS is ready)
+// ---------------------------------------------------------------------------
 
 export function useRegisterRequestOtp() {
   return useMutation({ mutationFn: svc.registerRequestOtp });
@@ -35,6 +43,30 @@ export function useRegisterConfirm() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Password-only registration (new — no OTP required)
+// ---------------------------------------------------------------------------
+
+export function useRegisterWithMobile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: svc.registerWithMobile,
+    onSuccess: (me) => qc.setQueryData(queryKeys.account.me, me),
+  });
+}
+
+export function useRegisterWithEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: svc.registerWithEmail,
+    onSuccess: (me) => qc.setQueryData(queryKeys.account.me, me),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Login — OTP-verified mobile (existing)
+// ---------------------------------------------------------------------------
+
 export function useAccountLogin() {
   const qc = useQueryClient();
   return useMutation({
@@ -43,13 +75,29 @@ export function useAccountLogin() {
   });
 }
 
-export function useAccountLogout() {
+// ---------------------------------------------------------------------------
+// Login — password-only (new)
+// ---------------------------------------------------------------------------
+
+export function useLoginWithMobile() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: svc.accountLogout,
-    onSuccess: () => qc.removeQueries({ queryKey: ["account"] }),
+    mutationFn: svc.loginWithMobile,
+    onSuccess: (me) => qc.setQueryData(queryKeys.account.me, me),
   });
 }
+
+export function useLoginWithEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: svc.loginWithEmail,
+    onSuccess: (me) => qc.setQueryData(queryKeys.account.me, me),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Password reset (existing — re-enabled when DLT SMS is ready)
+// ---------------------------------------------------------------------------
 
 export function usePasswordResetRequestOtp() {
   return useMutation({ mutationFn: svc.passwordResetRequestOtp });
@@ -59,15 +107,31 @@ export function usePasswordResetConfirm() {
   return useMutation({ mutationFn: svc.passwordResetConfirm });
 }
 
-// --- per-appointment actions (by id) ---------------------------------------
+// ---------------------------------------------------------------------------
+// Appointments list
+// ---------------------------------------------------------------------------
+
+export function useAccountAppointments(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.account.appointments,
+    queryFn: svc.getAccountAppointments,
+    enabled,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Per-appointment actions (by id)
+// ---------------------------------------------------------------------------
+
 function useInvalidateAppointments() {
   const qc = useQueryClient();
-  return () => qc.invalidateQueries({ queryKey: queryKeys.account.appointments });
+  return () =>
+    qc.invalidateQueries({ queryKey: queryKeys.account.appointments });
 }
 
 export function useAccountJoinStatus(
   id: string,
-  options?: { refetchInterval?: number | false }
+  options?: { refetchInterval?: number | false },
 ) {
   return useQuery({
     queryKey: [...queryKeys.account.appointments, id, "join-status"],

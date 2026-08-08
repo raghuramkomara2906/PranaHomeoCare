@@ -5,29 +5,36 @@ Two channels, deliberately separate:
   OTP delivery (blocking — patient can't book without it)
   ───────────────────────────────────────────────────────
   get_otp_provider().send_otp_code(to, otp)
-  → 2Factor send-your-own-OTP: POST .../API/V1/{key}/SMS/{phone}/{otp}
-    Works without DLT registration. Set OTP_PROVIDER=twofactor.
+  → Twilio: set OTP_PROVIDER=twilio
+  → 2Factor: set OTP_PROVIDER=twofactor
 
   General SMS — confirmations, reminders, Zoom-link ready (non-blocking)
   ───────────────────────────────────────────────────────────────────────
   get_sms_provider().send(to, body)
-  → Requires DLT-registered transactional templates.
-    Until DLT is completed, set SMS_PROVIDER=console — messages are logged
-    to the server terminal. Appointments still confirm; only the notification
-    is deferred. Add a transactional provider once DLT is registered.
+  → Twilio: set SMS_PROVIDER=twilio (recommended — works without DLT)
+  → Console: set SMS_PROVIDER=console (logs to terminal, no real SMS)
 
 Environment variables
 ─────────────────────
-  OTP_PROVIDER           twofactor | console | memory
-  TWOFACTOR_API_KEY      your 2Factor API key
-  TWOFACTOR_OTP_TEMPLATE optional registered template name (leave blank on trial)
-  SMS_PROVIDER           console | memory   (transactional; extend when DLT ready)
+  OTP_PROVIDER             twilio | twofactor | console | memory
+  SMS_PROVIDER             twilio | console | memory
+
+  TWILIO_ACCOUNT_SID       Account SID from twilio.com/console
+  TWILIO_AUTH_TOKEN        Auth Token from twilio.com/console
+  TWILIO_FROM_NUMBER       Your Twilio phone number (E.164: +1234567890)
+
+  TWOFACTOR_API_KEY        Your 2Factor API key (if using twofactor)
+  TWOFACTOR_OTP_TEMPLATE   Optional registered template name (leave blank on trial)
 """
 
 import uuid
 
 from app.config import settings
 
+
+# ---------------------------------------------------------------------------
+# Base interface
+# ---------------------------------------------------------------------------
 
 class SmsProvider:
     def send(self, to_e164: str, body: str) -> str:  # pragma: no cover
@@ -42,19 +49,22 @@ class SmsProvider:
         return self.send(to_e164, body)
 
 
-class ConsoleSmsProvider(SmsProvider):
-    """Logs every message to stdout.
+# ---------------------------------------------------------------------------
+# Console — dev + fallback
+# ---------------------------------------------------------------------------
 
-    Used in local dev (OTPs appear in the uvicorn terminal) and as the
-    SMS_PROVIDER fallback while DLT transactional registration is pending.
-    Non-fatal: the caller succeeds even though no real text is sent.
-    """
+class ConsoleSmsProvider(SmsProvider):
+    """Logs every message to stdout. Used in local dev."""
 
     def send(self, to_e164: str, body: str) -> str:
         mid = f"console-{uuid.uuid4().hex[:10]}"
         print(f"[SMS {mid} -> {to_e164}] {body}")
         return mid
 
+
+# ---------------------------------------------------------------------------
+# Memory — test suite only
+# ---------------------------------------------------------------------------
 
 class MemorySmsProvider(SmsProvider):
     """Captures every send call in-process so tests can assert and read OTPs."""
@@ -69,6 +79,51 @@ class MemorySmsProvider(SmsProvider):
         MemorySmsProvider.messages.append({"to": to_e164, "body": body, "id": mid})
         return mid
 
+
+# ---------------------------------------------------------------------------
+# Twilio — full SMS provider (OTP + transactional)
+# ---------------------------------------------------------------------------
+
+class TwilioSmsProvider(SmsProvider):
+    """Twilio Programmable SMS.
+
+    Works for both OTP delivery AND general SMS (confirmations, reminders).
+    Unlike 2Factor, Twilio handles all message types — no DLT required
+    for trial accounts (but only verified numbers on trial).
+
+    Required env vars:
+        TWILIO_ACCOUNT_SID   — from twilio.com/console
+        TWILIO_AUTH_TOKEN    — from twilio.com/console
+        TWILIO_FROM_NUMBER   — your Twilio number in E.164 (+1234567890)
+
+    Note: For India production, Twilio requires DLT registration.
+    On a trial account, you can only send to verified numbers.
+    """
+
+    def send(self, to_e164: str, body: str) -> str:
+        if not settings.twilio_account_sid:
+            raise RuntimeError("TWILIO_ACCOUNT_SID is not configured.")
+        if not settings.twilio_auth_token:
+            raise RuntimeError("TWILIO_AUTH_TOKEN is not configured.")
+        if not settings.twilio_from_number:
+            raise RuntimeError("TWILIO_FROM_NUMBER is not configured.")
+
+        try:
+            from twilio.rest import Client
+            client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
+            message = client.messages.create(
+                body=body,
+                from_=settings.twilio_from_number,
+                to=to_e164,
+            )
+            return str(message.sid)
+        except Exception as exc:
+            raise RuntimeError(f"Twilio SMS failed: {exc}") from exc
+
+
+# ---------------------------------------------------------------------------
+# 2Factor — OTP delivery only (send-your-own-OTP, no DLT required)
+# ---------------------------------------------------------------------------
 
 class TwoFactorOtpProvider(SmsProvider):
     """2Factor send-your-own-OTP endpoint.
@@ -91,7 +146,7 @@ class TwoFactorOtpProvider(SmsProvider):
         print(
             f"[2Factor-general-fallback {mid} -> {to_e164}] {body}\n"
             f"  ↳ 2Factor can only deliver OTPs without DLT registration.\n"
-            f"    Set SMS_PROVIDER to a transactional provider for this message."
+            f"    Set SMS_PROVIDER=twilio for transactional messages."
         )
         return mid
 
@@ -133,25 +188,34 @@ class TwoFactorOtpProvider(SmsProvider):
         return str(payload.get("Details", f"2f-{uuid.uuid4().hex[:12]}"))
 
 
+# ---------------------------------------------------------------------------
+# Singletons + selectors
+# ---------------------------------------------------------------------------
+
 _console   = ConsoleSmsProvider()
 _memory    = MemorySmsProvider()
+_twilio    = TwilioSmsProvider()
 _twofactor = TwoFactorOtpProvider()
 
 
 def _resolve(name: str) -> SmsProvider:
     if name == "memory":    return _memory
+    if name == "twilio":    return _twilio
     if name == "twofactor": return _twofactor
     return _console
 
 
 def get_sms_provider() -> SmsProvider:
+    """General SMS — confirmations, reminders, Zoom-link notifications."""
     return _resolve(settings.sms_provider)
 
 
 def get_otp_provider() -> SmsProvider:
+    """OTP delivery. Falls back to SMS_PROVIDER when OTP_PROVIDER is unset."""
     name = settings.otp_provider or settings.sms_provider
     return _resolve(name)
 
 
 def send_otp(to_e164: str, otp: str) -> str:
+    """Deliver an OTP the app has already generated."""
     return get_otp_provider().send_otp_code(to_e164, otp)

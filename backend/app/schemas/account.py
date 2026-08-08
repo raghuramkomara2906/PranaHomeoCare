@@ -1,9 +1,13 @@
 from datetime import datetime
 
-from pydantic import Field
+from pydantic import Field, EmailStr
 
 from app.schemas.base import CamelModel
 
+
+# ---------------------------------------------------------------------------
+# OTP-based registration (existing — re-enabled when DLT is ready)
+# ---------------------------------------------------------------------------
 
 class RegisterOtpIn(CamelModel):
     mobile_number: str
@@ -21,14 +25,58 @@ class RegisterConfirmIn(CamelModel):
     password: str = Field(min_length=8, max_length=72)
 
 
+# ---------------------------------------------------------------------------
+# Password-based registration (new — no OTP required)
+# ---------------------------------------------------------------------------
+
+class MobileRegisterIn(CamelModel):
+    """Register with mobile number + password. No OTP verification for now.
+    Mobile is stored and used for appointment reminders once SMS is live."""
+    mobile_number: str
+    password: str = Field(min_length=8, max_length=72)
+    full_name: str | None = None
+
+
+class EmailRegisterIn(CamelModel):
+    """Register with email + password. Used when OTP SMS is not available."""
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=72)
+    full_name: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Login (existing OTP-based + new password-based)
+# ---------------------------------------------------------------------------
+
 class LoginIn(CamelModel):
+    """Existing OTP-verified mobile login."""
     mobile_number: str
     password: str = Field(max_length=72)
 
 
+class MobileLoginIn(CamelModel):
+    """Login with mobile number + password."""
+    mobile_number: str
+    password: str = Field(max_length=72)
+
+
+class EmailLoginIn(CamelModel):
+    """Login with email + password."""
+    email: EmailStr
+    password: str = Field(max_length=72)
+
+
+# ---------------------------------------------------------------------------
+# Responses
+# ---------------------------------------------------------------------------
+
 class AccountMe(CamelModel):
     id: str
-    mobile_masked: str
+    mobile_masked: str | None = None   # None for email-only accounts
+    email: str | None = None           # None for mobile-only accounts
+    full_name: str | None = None
+    has_mobile: bool = False
+    has_email: bool = False
 
 
 class AccountAppointmentItem(CamelModel):
@@ -51,6 +99,10 @@ class AccountAppointmentsOut(CamelModel):
     timezone: str
     appointments: list[AccountAppointmentItem]
 
+
+# ---------------------------------------------------------------------------
+# Password reset (existing — re-enabled when DLT is ready)
+# ---------------------------------------------------------------------------
 
 class PasswordResetOtpIn(CamelModel):
     mobile_number: str

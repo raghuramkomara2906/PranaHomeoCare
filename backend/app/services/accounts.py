@@ -1,8 +1,9 @@
 """Feature 11 — optional patient accounts.
 
-An account is identified by a verified mobile number and is a view over every
-appointment that shares that mobile (no patient_id on appointments). Entirely
-separate from admin auth. Reuses the existing OTP, cancel/reschedule/join logic.
+An account is identified by a verified mobile number OR email address.
+Mobile accounts link to appointments by mobile_e164 match.
+Email accounts can be upgraded with a mobile number later.
+Entirely separate from admin auth.
 """
 from datetime import datetime, timedelta, timezone
 
@@ -42,11 +43,24 @@ def _utcnow() -> datetime:
 
 def _account_by_mobile(db: Session, mobile: str) -> PatientAccount | None:
     return (
-        db.query(PatientAccount).filter(PatientAccount.mobile_e164 == mobile).first()
+        db.query(PatientAccount)
+        .filter(PatientAccount.mobile_e164 == mobile)
+        .first()
     )
 
 
-# --- OTP (registration / password reset) -----------------------------------
+def _account_by_email(db: Session, email: str) -> PatientAccount | None:
+    return (
+        db.query(PatientAccount)
+        .filter(PatientAccount.email == email.lower().strip())
+        .first()
+    )
+
+
+# ---------------------------------------------------------------------------
+# OTP-based registration / password reset (re-enabled when DLT is ready)
+# ---------------------------------------------------------------------------
+
 def request_otp(db: Session, raw_mobile: str, purpose: str) -> dict:
     mobile = normalize_mobile(raw_mobile)
     existing = _account_by_mobile(db, mobile)
@@ -55,7 +69,6 @@ def request_otp(db: Session, raw_mobile: str, purpose: str) -> dict:
     if purpose == PASSWORD_RESET and existing is None:
         raise HTTPException(404, "No account exists for this mobile.")
 
-    # Supersede any earlier pending challenges for this mobile+purpose.
     (
         db.query(AccountOtpChallenge)
         .filter(
@@ -116,7 +129,6 @@ def _consume_otp(db: Session, mobile: str, purpose: str, otp: str) -> None:
     db.flush()
 
 
-# --- registration -----------------------------------------------------------
 def register(db: Session, raw_mobile: str, otp: str, password: str) -> PatientAccount:
     mobile = normalize_mobile(raw_mobile)
     if len(password) < settings.password_min_length:
@@ -136,7 +148,6 @@ def register(db: Session, raw_mobile: str, otp: str, password: str) -> PatientAc
     return account
 
 
-# --- login ------------------------------------------------------------------
 def login(db: Session, raw_mobile: str, password: str) -> PatientAccount:
     mobile = normalize_mobile(raw_mobile)
     account = _account_by_mobile(db, mobile)
@@ -163,7 +174,6 @@ def login(db: Session, raw_mobile: str, password: str) -> PatientAccount:
     return account
 
 
-# --- password reset ---------------------------------------------------------
 def reset_password(db: Session, raw_mobile: str, otp: str, password: str) -> None:
     mobile = normalize_mobile(raw_mobile)
     if len(password) < settings.password_min_length:
@@ -178,7 +188,147 @@ def reset_password(db: Session, raw_mobile: str, otp: str, password: str) -> Non
     db.commit()
 
 
-# --- appointments view + scoped actions ------------------------------------
+# ---------------------------------------------------------------------------
+# Password-only registration (no OTP — used until DLT SMS is ready)
+# ---------------------------------------------------------------------------
+
+def register_with_mobile(
+    db: Session,
+    raw_mobile: str,
+    password: str,
+    full_name: str | None = None,
+) -> PatientAccount:
+    """Register with mobile + password only — no OTP verification.
+    Mobile is stored so appointment reminders can be sent once SMS is live."""
+    mobile = normalize_mobile(raw_mobile)
+
+    if _account_by_mobile(db, mobile) is not None:
+        raise HTTPException(409, "An account already exists for this mobile. Please sign in.")
+
+    if len(password) < settings.password_min_length:
+        raise HTTPException(
+            422,
+            f"Password must be at least {settings.password_min_length} characters."
+        )
+
+    account = PatientAccount(
+        mobile_e164=mobile,
+        full_name=full_name.strip() if full_name else None,
+        password_hash=hash_password(password),
+        mobile_verified_at=None,   # not verified — no OTP
+        last_login_at=_utcnow(),
+    )
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+def register_with_email(
+    db: Session,
+    email: str,
+    password: str,
+    full_name: str | None = None,
+) -> PatientAccount:
+    """Register with email + password — no OTP required."""
+    clean_email = email.lower().strip()
+
+    if _account_by_email(db, clean_email) is not None:
+        raise HTTPException(409, "An account already exists for this email. Please sign in.")
+
+    if len(password) < settings.password_min_length:
+        raise HTTPException(
+            422,
+            f"Password must be at least {settings.password_min_length} characters."
+        )
+
+    account = PatientAccount(
+        email=clean_email,
+        full_name=full_name.strip() if full_name else None,
+        password_hash=hash_password(password),
+        mobile_verified_at=None,
+        last_login_at=_utcnow(),
+    )
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+def login_with_mobile(
+    db: Session,
+    raw_mobile: str,
+    password: str,
+) -> PatientAccount:
+    """Login with mobile + password (no OTP)."""
+    mobile = normalize_mobile(raw_mobile)
+    account = _account_by_mobile(db, mobile)
+    invalid = HTTPException(401, "Incorrect mobile number or password.")
+
+    if account is None:
+        raise invalid
+
+    now = _utcnow()
+    if account.locked_until is not None and account.locked_until > now:
+        raise HTTPException(423, "Account temporarily locked. Try again later.")
+
+    if not verify_password(password, account.password_hash):
+        account.failed_login_count += 1
+        if account.failed_login_count >= settings.account_lockout_threshold:
+            account.locked_until = now + timedelta(minutes=settings.account_lockout_minutes)
+            account.failed_login_count = 0
+        db.commit()
+        raise invalid
+
+    if needs_rehash(account.password_hash):
+        account.password_hash = hash_password(password)
+    account.failed_login_count = 0
+    account.locked_until = None
+    account.last_login_at = now
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+def login_with_email(
+    db: Session,
+    email: str,
+    password: str,
+) -> PatientAccount:
+    """Login with email + password."""
+    clean_email = email.lower().strip()
+    account = _account_by_email(db, clean_email)
+    invalid = HTTPException(401, "Incorrect email or password.")
+
+    if account is None:
+        raise invalid
+
+    now = _utcnow()
+    if account.locked_until is not None and account.locked_until > now:
+        raise HTTPException(423, "Account temporarily locked. Try again later.")
+
+    if not verify_password(password, account.password_hash):
+        account.failed_login_count += 1
+        if account.failed_login_count >= settings.account_lockout_threshold:
+            account.locked_until = now + timedelta(minutes=settings.account_lockout_minutes)
+            account.failed_login_count = 0
+        db.commit()
+        raise invalid
+
+    if needs_rehash(account.password_hash):
+        account.password_hash = hash_password(password)
+    account.failed_login_count = 0
+    account.locked_until = None
+    account.last_login_at = now
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+# ---------------------------------------------------------------------------
+# Appointments view + scoped actions (unchanged)
+# ---------------------------------------------------------------------------
+
 def _appt_view(db: Session, appt: Appointment) -> dict:
     return {**access_view(db, appt), "id": str(appt.id)}
 
@@ -197,14 +347,18 @@ def list_appointments(db: Session, account: PatientAccount) -> dict:
     }
 
 
-def _owned_appointment(db: Session, account: PatientAccount, appointment_id: str) -> Appointment:
+def _owned_appointment(
+    db: Session, account: PatientAccount, appointment_id: str
+) -> Appointment:
     appt = db.get(Appointment, appointment_id)
     if appt is None or appt.mobile_e164 != account.mobile_e164:
         raise HTTPException(404, "Appointment not found.")
     return appt
 
 
-def cancel(db: Session, account: PatientAccount, appointment_id: str) -> Appointment:
+def cancel(
+    db: Session, account: PatientAccount, appointment_id: str
+) -> Appointment:
     appt = _owned_appointment(db, account, appointment_id)
     perform_cancel(db, appt, actor_type=ActorType.PATIENT.value, enforce_cutoff=True)
     db.commit()
@@ -212,24 +366,35 @@ def cancel(db: Session, account: PatientAccount, appointment_id: str) -> Appoint
     return appt
 
 
-def reschedule_options(db: Session, account: PatientAccount, appointment_id: str) -> dict:
+def reschedule_options(
+    db: Session, account: PatientAccount, appointment_id: str
+) -> dict:
     appt = _owned_appointment(db, account, appointment_id)
     return reschedule_options_for(db, appt)
 
 
-def reschedule(db: Session, account: PatientAccount, appointment_id: str, new_slot_id: str) -> Appointment:
+def reschedule(
+    db: Session, account: PatientAccount, appointment_id: str, new_slot_id: str
+) -> Appointment:
     appt = _owned_appointment(db, account, appointment_id)
-    perform_reschedule(db, appt, new_slot_id, actor_type=ActorType.PATIENT.value, enforce_cutoff=True)
+    perform_reschedule(
+        db, appt, new_slot_id,
+        actor_type=ActorType.PATIENT.value, enforce_cutoff=True
+    )
     db.commit()
     db.refresh(appt)
     return appt
 
 
-def join_status(db: Session, account: PatientAccount, appointment_id: str) -> dict:
+def join_status(
+    db: Session, account: PatientAccount, appointment_id: str
+) -> dict:
     appt = _owned_appointment(db, account, appointment_id)
     return join_status_for(db, appt)
 
 
-def join(db: Session, account: PatientAccount, appointment_id: str) -> dict:
+def join(
+    db: Session, account: PatientAccount, appointment_id: str
+) -> dict:
     appt = _owned_appointment(db, account, appointment_id)
     return join_for(db, appt)

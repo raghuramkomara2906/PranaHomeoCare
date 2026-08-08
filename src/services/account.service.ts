@@ -10,7 +10,10 @@ import type {
   RescheduleResponse,
 } from "@/lib/types/api";
 
-// --- auth / registration ---------------------------------------------------
+// ---------------------------------------------------------------------------
+// OTP-based registration (existing — re-enabled when DLT SMS is ready)
+// ---------------------------------------------------------------------------
+
 export function registerRequestOtp(mobileNumber: string): Promise<AccountOtpChallenge> {
   return apiFetch("/api/v1/account/register/request-otp", {
     method: "POST",
@@ -29,6 +32,36 @@ export function registerConfirm(input: {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Password-only registration (new — no OTP required)
+// ---------------------------------------------------------------------------
+
+export function registerWithMobile(input: {
+  mobileNumber: string;
+  password: string;
+  fullName?: string;
+}): Promise<AccountMe> {
+  return apiFetch("/api/v1/account/register/mobile", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function registerWithEmail(input: {
+  email: string;
+  password: string;
+  fullName?: string;
+}): Promise<AccountMe> {
+  return apiFetch("/api/v1/account/register/email", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Login (existing OTP-verified + new password-only)
+// ---------------------------------------------------------------------------
+
 export function accountLogin(input: {
   mobileNumber: string;
   password: string;
@@ -39,6 +72,30 @@ export function accountLogin(input: {
   });
 }
 
+export function loginWithMobile(input: {
+  mobileNumber: string;
+  password: string;
+}): Promise<AccountMe> {
+  return apiFetch("/api/v1/account/login/mobile", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function loginWithEmail(input: {
+  email: string;
+  password: string;
+}): Promise<AccountMe> {
+  return apiFetch("/api/v1/account/login/email", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Session
+// ---------------------------------------------------------------------------
+
 export function accountLogout(): Promise<void> {
   return apiFetch("/api/v1/account/logout", { method: "POST" });
 }
@@ -47,7 +104,13 @@ export function getAccountMe(): Promise<AccountMe> {
   return apiFetch("/api/v1/account/me");
 }
 
-export function passwordResetRequestOtp(mobileNumber: string): Promise<AccountOtpChallenge> {
+// ---------------------------------------------------------------------------
+// Password reset (existing — re-enabled when DLT SMS is ready)
+// ---------------------------------------------------------------------------
+
+export function passwordResetRequestOtp(
+  mobileNumber: string,
+): Promise<AccountOtpChallenge> {
   return apiFetch("/api/v1/account/password-reset/request-otp", {
     method: "POST",
     body: JSON.stringify({ mobileNumber }),
@@ -65,7 +128,10 @@ export function passwordResetConfirm(input: {
   });
 }
 
-// --- appointments (by id, session-scoped) ----------------------------------
+// ---------------------------------------------------------------------------
+// Appointments (unchanged)
+// ---------------------------------------------------------------------------
+
 export function getAccountAppointments(): Promise<AccountAppointmentsOut> {
   return apiFetch("/api/v1/account/appointments");
 }
@@ -84,7 +150,10 @@ export function accountRescheduleOptions(id: string): Promise<RescheduleOptions>
   return apiFetch(`${base(id)}/reschedule-options`);
 }
 
-export function accountReschedule(id: string, newSlotId: string): Promise<RescheduleResponse> {
+export function accountReschedule(
+  id: string,
+  newSlotId: string,
+): Promise<RescheduleResponse> {
   return apiFetch(`${base(id)}/reschedule`, {
     method: "POST",
     body: JSON.stringify({ newSlotId }),
